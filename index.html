@@ -65,8 +65,14 @@
             <h1 class="text-3xl font-bold text-gray-700 mb-2">📝 Danh Sách Công Việc</h1>
             <p class="text-gray-500">Quản lý công việc hàng ngày của bạn</p>
             
-            <!-- Nút nhập/xuất Excel -->
-            <div class="flex justify-center gap-4 mt-4">
+            <!-- Nút Excel và Hình nền -->
+            <div class="flex justify-center gap-4 mt-4 flex-wrap">
+                <button 
+                    onclick="downloadTemplate()"
+                    class="bg-orange-200 hover:bg-orange-300 text-orange-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium flex items-center gap-2"
+                >
+                    📋 Tải Mẫu
+                </button>
                 <div class="relative">
                     <input 
                         type="file" 
@@ -79,14 +85,14 @@
                         onclick="document.getElementById('excel-import').click()"
                         class="bg-blue-200 hover:bg-blue-300 text-blue-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium flex items-center gap-2"
                     >
-                        📥 Nhập Excel
+                        📤 Tải Excel Lên
                     </button>
                 </div>
                 <button 
                     onclick="exportExcel()"
                     class="bg-green-200 hover:bg-green-300 text-green-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium flex items-center gap-2"
                 >
-                    📤 Xuất Excel
+                    💾 Xuất Excel
                 </button>
                 <button 
                     onclick="exportWallpaper()"
@@ -111,25 +117,25 @@
                             <input 
                                 type="time" 
                                 id="morning-time"
-                                class="task-input w-20"
+                                class="task-input w-28"
                                 value="08:00"
                             >
-                            <select id="morning-day" class="task-input w-24">
-                                <option value="monday">T2</option>
-                                <option value="tuesday">T3</option>
-                                <option value="wednesday">T4</option>
-                                <option value="thursday">T5</option>
-                                <option value="friday">T6</option>
-                                <option value="saturday">T7</option>
-                                <option value="sunday">CN</option>
+                            <select id="morning-day" class="task-input w-32">
+                                <option value="monday">Thứ 2</option>
+                                <option value="tuesday">Thứ 3</option>
+                                <option value="wednesday">Thứ 4</option>
+                                <option value="thursday">Thứ 5</option>
+                                <option value="friday">Thứ 6</option>
+                                <option value="saturday">Thứ 7</option>
+                                <option value="sunday">Chủ nhật</option>
                             </select>
-                            <select id="morning-category" class="task-input w-32">
+                            <select id="morning-category" class="task-input w-40">
                                 <option value="work">💼 Công việc</option>
                                 <option value="study">📚 Học tập</option>
                                 <option value="health">💪 Sức khỏe</option>
                                 <option value="personal">🏠 Cá nhân</option>
                             </select>
-                            <select id="morning-priority" class="task-input w-36">
+                            <select id="morning-priority" class="task-input w-44">
                                 <option value="high">🔴 Làm ngay nhé</option>
                                 <option value="medium" selected>🟡 Làm sớm nha</option>
                                 <option value="low">🟢 Cứ chill thôi</option>
@@ -138,7 +144,7 @@
                                 type="text" 
                                 id="morning-input"
                                 placeholder="Thêm công việc..."
-                                class="task-input flex-1 min-w-40"
+                                class="task-input flex-1 min-w-48"
                                 required
                             >
                         </div>
@@ -169,25 +175,25 @@
                             <input 
                                 type="time" 
                                 id="afternoon-time"
-                                class="task-input w-20"
+                                class="task-input w-28"
                                 value="14:00"
                             >
-                            <select id="afternoon-day" class="task-input w-24">
-                                <option value="monday">T2</option>
-                                <option value="tuesday">T3</option>
-                                <option value="wednesday">T4</option>
-                                <option value="thursday">T5</option>
-                                <option value="friday">T6</option>
-                                <option value="saturday">T7</option>
-                                <option value="sunday">CN</option>
+                            <select id="afternoon-day" class="task-input w-32">
+                                <option value="monday">Thứ 2</option>
+                                <option value="tuesday">Thứ 3</option>
+                                <option value="wednesday">Thứ 4</option>
+                                <option value="thursday">Thứ 5</option>
+                                <option value="friday">Thứ 6</option>
+                                <option value="saturday">Thứ 7</option>
+                                <option value="sunday">Chủ nhật</option>
                             </select>
-                            <select id="afternoon-category" class="task-input w-32">
+                            <select id="afternoon-category" class="task-input w-40">
                                 <option value="work">💼 Công việc</option>
                                 <option value="study">📚 Học tập</option>
                                 <option value="health">💪 Sức khỏe</option>
                                 <option value="personal">🏠 Cá nhân</option>
                             </select>
-                            <select id="afternoon-priority" class="task-input w-36">
+                            <select id="afternoon-priority" class="task-input w-44">
                                 <option value="high">🔴 Làm ngay nhé</option>
                                 <option value="medium" selected>🟡 Làm sớm nha</option>
                                 <option value="low">🟢 Cứ chill thôi</option>
@@ -196,7 +202,7 @@
                                 type="text" 
                                 id="afternoon-input"
                                 placeholder="Thêm công việc..."
-                                class="task-input flex-1 min-w-40"
+                                class="task-input flex-1 min-w-48"
                                 required
                             >
                         </div>
@@ -383,6 +389,60 @@
             document.getElementById('afternoon-completed').textContent = afternoonCompleted;
         }
         
+        function downloadTemplate() {
+            // Tạo dữ liệu mẫu
+            const templateData = [
+                {
+                    'Buổi': 'Sáng',
+                    'Công việc': 'Họp team standup',
+                    'Giờ': '09:00',
+                    'Ngày': 'Thứ 2',
+                    'Loại': 'Công việc',
+                    'Độ ưu tiên': 'Làm ngay nhé',
+                    'Hoàn thành': 'Chưa'
+                },
+                {
+                    'Buổi': 'Sáng',
+                    'Công việc': 'Đọc sách 30 phút',
+                    'Giờ': '07:30',
+                    'Ngày': 'Thứ 2',
+                    'Loại': 'Học tập',
+                    'Độ ưu tiên': 'Làm sớm nha',
+                    'Hoàn thành': 'Chưa'
+                },
+                {
+                    'Buổi': 'Chiều',
+                    'Công việc': 'Tập thể dục',
+                    'Giờ': '17:00',
+                    'Ngày': 'Thứ 2',
+                    'Loại': 'Sức khỏe',
+                    'Độ ưu tiên': 'Cứ chill thôi',
+                    'Hoàn thành': 'Chưa'
+                },
+                {
+                    'Buổi': 'Chiều',
+                    'Công việc': 'Nấu ăn tối',
+                    'Giờ': '18:30',
+                    'Ngày': 'Thứ 2',
+                    'Loại': 'Cá nhân',
+                    'Độ ưu tiên': 'Làm sớm nha',
+                    'Hoàn thành': 'Chưa'
+                }
+            ];
+            
+            // Tạo workbook và worksheet
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(templateData);
+            
+            // Thêm worksheet vào workbook
+            XLSX.utils.book_append_sheet(wb, ws, 'Mẫu công việc');
+            
+            // Xuất file mẫu
+            XLSX.writeFile(wb, 'Mau-danh-sach-cong-viec.xlsx');
+            
+            showNotification('Đã tải xuống file mẫu Excel!', 'success');
+        }
+        
         function exportExcel() {
             const data = [];
             
@@ -483,7 +543,7 @@
                     });
                     
                     updateStats();
-                    showNotification(`Đã nhập ${jsonData.length} công việc từ Excel!`, 'success');
+                    showNotification(`Đã tải lên và nhập ${jsonData.length} công việc từ Excel!`, 'success');
                     
                 } catch (error) {
                     showNotification('Lỗi khi đọc file Excel. Vui lòng kiểm tra định dạng file!', 'error');
@@ -835,5 +895,5 @@
             }, 3000);
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'990828abe3049626',t:'MTc2MDc5MTgwMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9908547111859626',t:'MTc2MDc5MzU5My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
