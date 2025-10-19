@@ -1,100 +1,901 @@
-                    // Áp dụng màu cho các ô thời gian
-                    const timeCells = document.querySelectorAll('tbody td:first-child');
-                    timeCells.forEach(cell => {
-                        if (cell.textContent.includes('Tiết') || cell.textContent.includes('Ra chơi') || cell.classList.contains('time-cell')) {
-                            cell.style.cssText = colorScheme.timeCell + ` color: ${colorScheme.textColor}; padding: 12px; font-weight: bold; text-align: center;`;
-                        }
-                    });
-                }
-            }
-
-            // Tải màu ghi chú đã lưu
-            const savedNoteColor = localStorage.getItem('noteColor');
-            if (savedNoteColor) {
-                const colorScheme = noteColorSchemes[savedNoteColor];
-                if (colorScheme) {
-                    // Áp dụng màu cho tất cả các dòng ghi chú
-                    const noteRows = document.querySelectorAll('tr[style*="background"]');
-                    noteRows.forEach(row => {
-                        const firstCell = row.querySelector('td:first-child');
-                        if (firstCell && firstCell.textContent.includes('📝 Ghi chú')) {
-                            // Áp dụng màu cho dòng ghi chú
-                            row.style.background = colorScheme.background;
-                            
-                            // Áp dụng màu cho ô đầu tiên (tiêu đề ghi chú)
-                            firstCell.style.cssText = `background: ${colorScheme.background}; color: ${colorScheme.textColor}; padding: 8px; text-align: center; font-size: 12px; font-weight: 500; border: 1px solid ${colorScheme.borderColor};`;
-                            
-                            // Áp dụng màu cho tất cả các ô ghi chú trong dòng này
-                            const noteCells = row.querySelectorAll('.note-cell');
-                            noteCells.forEach(cell => {
-                                cell.style.background = colorScheme.background;
-                                cell.style.border = `1px solid ${colorScheme.borderColor}`;
-                                
-                                // Cập nhật màu cho textarea trong ô ghi chú
-                                const textarea = cell.querySelector('textarea');
-                                if (textarea) {
-                                    textarea.style.background = colorScheme.background;
-                                    textarea.style.color = colorScheme.textColor;
-                                    textarea.style.border = `1px solid ${colorScheme.borderColor}`;
-                                }
-                            });
-                        }
-                    });
-                }
-            }
-            
-            // Đảm bảo tất cả ô nội dung luôn có màu trắng
-            const contentCells = document.querySelectorAll('.schedule-cell, .note-cell');
-            contentCells.forEach(cell => {
-                if (!cell.style.background || cell.style.background === '') {
-                    cell.style.background = 'white';
-                }
-            });
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            box-sizing: border-box;
         }
+        
+        .custom-checkbox {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #d1d5db;
+            border-radius: 4px;
+            background-color: white;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        
+        .custom-checkbox:checked {
+            background-color: #a7f3d0;
+            border-color: #10b981;
+        }
+        
+        .custom-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #065f46;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .completed-task {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+        
+        .task-input {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 8px 12px;
+            background-color: #fefefe;
+            transition: border-color 0.2s ease;
+        }
+        
+        .task-input:focus {
+            outline: none;
+            border-color: #a7f3d0;
+            box-shadow: 0 0 0 3px rgba(167, 243, 208, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-full bg-gradient-to-br from-pink-50 to-blue-50 p-4">
+    <div class="max-w-4xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-700 mb-2">📝 Danh Sách Công Việc</h1>
+            <p class="text-gray-500">Quản lý công việc hàng ngày của bạn</p>
+            
+            <!-- Nút Excel và Hình nền -->
+            <div class="flex justify-center gap-4 mt-4 flex-wrap">
+                <button 
+                    onclick="downloadTemplate()"
+                    class="bg-orange-200 hover:bg-orange-300 text-orange-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium flex items-center gap-2"
+                >
+                    📋 Tải Mẫu
+                </button>
+                <div class="relative">
+                    <input 
+                        type="file" 
+                        id="excel-import" 
+                        accept=".xlsx,.xls" 
+                        class="hidden"
+                        onchange="importExcel(event)"
+                    >
+                    <button 
+                        onclick="document.getElementById('excel-import').click()"
+                        class="bg-blue-200 hover:bg-blue-300 text-blue-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium flex items-center gap-2"
+                    >
+                        📤 Tải Excel Lên
+                    </button>
+                </div>
+                <button 
+                    onclick="exportExcel()"
+                    class="bg-green-200 hover:bg-green-300 text-green-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium flex items-center gap-2"
+                >
+                    💾 Xuất Excel
+                </button>
+                <button 
+                    onclick="exportWallpaper()"
+                    class="bg-purple-200 hover:bg-purple-300 text-purple-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium flex items-center gap-2"
+                >
+                    📱 Xuất Hình Nền
+                </button>
+            </div>
+        </header>
 
-        // Thêm CSS animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeIn {
-                from { opacity: 0; transform: translateY(-10px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-            
-            .schedule-cell {
-                transition: all 0.3s ease;
-            }
-            
-            .schedule-cell:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            }
-            
-            .color-option div {
-                transition: all 0.2s ease;
-            }
-        `;
-        document.head.appendChild(style);
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Phần Sáng -->
+            <div class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/50">
+                <div class="flex items-center mb-4">
+                    <span class="text-2xl mr-3">🌅</span>
+                    <h2 class="text-xl font-semibold text-gray-700">Buổi Sáng</h2>
+                </div>
+                
+                <form class="mb-4" onsubmit="addTask(event, 'morning')">
+                    <div class="space-y-2">
+                        <div class="flex gap-2 flex-wrap">
+                            <input 
+                                type="time" 
+                                id="morning-time"
+                                class="task-input w-28"
+                                value="08:00"
+                            >
+                            <select id="morning-day" class="task-input w-32">
+                                <option value="monday">Thứ 2</option>
+                                <option value="tuesday">Thứ 3</option>
+                                <option value="wednesday">Thứ 4</option>
+                                <option value="thursday">Thứ 5</option>
+                                <option value="friday">Thứ 6</option>
+                                <option value="saturday">Thứ 7</option>
+                                <option value="sunday">Chủ nhật</option>
+                            </select>
+                            <select id="morning-category" class="task-input w-40">
+                                <option value="work">💼 Công việc</option>
+                                <option value="study">📚 Học tập</option>
+                                <option value="health">💪 Sức khỏe</option>
+                                <option value="personal">🏠 Cá nhân</option>
+                            </select>
+                            <select id="morning-priority" class="task-input w-44">
+                                <option value="high">🔴 Làm ngay nhé</option>
+                                <option value="medium" selected>🟡 Làm sớm nha</option>
+                                <option value="low">🟢 Cứ chill thôi</option>
+                            </select>
+                            <input 
+                                type="text" 
+                                id="morning-input"
+                                placeholder="Thêm công việc..."
+                                class="task-input flex-1 min-w-48"
+                                required
+                            >
+                        </div>
+                        <button 
+                            type="submit"
+                            class="bg-emerald-200 hover:bg-emerald-300 text-emerald-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium w-full"
+                        >
+                            Thêm Công Việc
+                        </button>
+                    </div>
+                </form>
+                
+                <ul id="morning-tasks" class="space-y-3">
+                    <!-- Các task buổi sáng sẽ được thêm vào đây -->
+                </ul>
+            </div>
 
-        // Khởi tạo ứng dụng
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeSchedule();
-            setupAutoSave();
+            <!-- Phần Chiều -->
+            <div class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/50">
+                <div class="flex items-center mb-4">
+                    <span class="text-2xl mr-3">🌇</span>
+                    <h2 class="text-xl font-semibold text-gray-700">Buổi Chiều</h2>
+                </div>
+                
+                <form class="mb-4" onsubmit="addTask(event, 'afternoon')">
+                    <div class="space-y-2">
+                        <div class="flex gap-2 flex-wrap">
+                            <input 
+                                type="time" 
+                                id="afternoon-time"
+                                class="task-input w-28"
+                                value="14:00"
+                            >
+                            <select id="afternoon-day" class="task-input w-32">
+                                <option value="monday">Thứ 2</option>
+                                <option value="tuesday">Thứ 3</option>
+                                <option value="wednesday">Thứ 4</option>
+                                <option value="thursday">Thứ 5</option>
+                                <option value="friday">Thứ 6</option>
+                                <option value="saturday">Thứ 7</option>
+                                <option value="sunday">Chủ nhật</option>
+                            </select>
+                            <select id="afternoon-category" class="task-input w-40">
+                                <option value="work">💼 Công việc</option>
+                                <option value="study">📚 Học tập</option>
+                                <option value="health">💪 Sức khỏe</option>
+                                <option value="personal">🏠 Cá nhân</option>
+                            </select>
+                            <select id="afternoon-priority" class="task-input w-44">
+                                <option value="high">🔴 Làm ngay nhé</option>
+                                <option value="medium" selected>🟡 Làm sớm nha</option>
+                                <option value="low">🟢 Cứ chill thôi</option>
+                            </select>
+                            <input 
+                                type="text" 
+                                id="afternoon-input"
+                                placeholder="Thêm công việc..."
+                                class="task-input flex-1 min-w-48"
+                                required
+                            >
+                        </div>
+                        <button 
+                            type="submit"
+                            class="bg-purple-200 hover:bg-purple-300 text-purple-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium w-full"
+                        >
+                            Thêm Công Việc
+                        </button>
+                    </div>
+                </form>
+                
+                <ul id="afternoon-tasks" class="space-y-3">
+                    <!-- Các task buổi chiều sẽ được thêm vào đây -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- Thống kê -->
+        <div class="mt-8 bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/50">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3 text-center">📊 Thống Kê Hôm Nay</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div class="bg-emerald-100 rounded-lg p-3">
+                    <div class="text-2xl font-bold text-emerald-700" id="morning-total">0</div>
+                    <div class="text-sm text-emerald-600">Sáng - Tổng</div>
+                </div>
+                <div class="bg-emerald-200 rounded-lg p-3">
+                    <div class="text-2xl font-bold text-emerald-800" id="morning-completed">0</div>
+                    <div class="text-sm text-emerald-700">Sáng - Hoàn thành</div>
+                </div>
+                <div class="bg-purple-100 rounded-lg p-3">
+                    <div class="text-2xl font-bold text-purple-700" id="afternoon-total">0</div>
+                    <div class="text-sm text-purple-600">Chiều - Tổng</div>
+                </div>
+                <div class="bg-purple-200 rounded-lg p-3">
+                    <div class="text-2xl font-bold text-purple-800" id="afternoon-completed">0</div>
+                    <div class="text-sm text-purple-700">Chiều - Hoàn thành</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let taskId = 0;
+        
+        function addTask(event, period) {
+            event.preventDefault();
             
-            // Thêm event listener để thoát chế độ chọn màu khi nhấn ESC
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && colorMode) {
-                    selectedColor = null;
-                    colorMode = false;
-                    document.body.style.cursor = 'default';
-                    document.getElementById('selectedColorInfo').textContent = 'Chưa chọn màu nào';
-                    document.querySelectorAll('.color-option div').forEach(div => {
-                        div.style.transform = 'scale(1)';
-                        div.style.boxShadow = 'none';
-                    });
-                    showNotification('Đã thoát chế độ chọn màu');
-                }
+            const input = document.getElementById(`${period}-input`);
+            const timeInput = document.getElementById(`${period}-time`);
+            const dayInput = document.getElementById(`${period}-day`);
+            const categoryInput = document.getElementById(`${period}-category`);
+            const priorityInput = document.getElementById(`${period}-priority`);
+            
+            const taskText = input.value.trim();
+            const taskTime = timeInput.value;
+            const taskDay = dayInput.value;
+            const category = categoryInput.value;
+            const priority = priorityInput.value;
+            
+            if (taskText === '') return;
+            
+            const taskList = document.getElementById(`${period}-tasks`);
+            const currentTaskId = ++taskId;
+            
+            // Lấy icon và text cho category
+            const categoryOptions = {
+                work: '💼 Công việc',
+                study: '📚 Học tập',
+                health: '💪 Sức khỏe',
+                personal: '🏠 Cá nhân'
+            };
+            
+            // Lấy text cho ngày
+            const dayOptions = {
+                monday: 'Thứ 2',
+                tuesday: 'Thứ 3',
+                wednesday: 'Thứ 4',
+                thursday: 'Thứ 5',
+                friday: 'Thứ 6',
+                saturday: 'Thứ 7',
+                sunday: 'Chủ nhật'
+            };
+            
+            // Lấy màu cho priority
+            const priorityColors = {
+                high: 'border-l-red-400 bg-red-50/50',
+                medium: 'border-l-yellow-400 bg-yellow-50/50',
+                low: 'border-l-green-400 bg-green-50/50'
+            };
+            
+            const priorityIcons = {
+                high: '🔴',
+                medium: '🟡',
+                low: '🟢'
+            };
+            
+            const taskItem = document.createElement('li');
+            taskItem.className = `flex items-center gap-3 p-3 bg-white/50 rounded-lg border-l-4 ${priorityColors[priority]} hover:bg-white/70 transition-colors duration-200`;
+            taskItem.id = `task-${currentTaskId}`;
+            taskItem.dataset.priority = priority;
+            
+            taskItem.innerHTML = `
+                <input 
+                    type="checkbox" 
+                    class="custom-checkbox" 
+                    id="checkbox-${currentTaskId}"
+                    onchange="toggleTask(${currentTaskId}, '${period}')"
+                >
+                <div class="flex-1">
+                    <label for="checkbox-${currentTaskId}" class="cursor-pointer text-gray-700 block font-medium" id="label-${currentTaskId}">
+                        ${taskText}
+                    </label>
+                    <div class="flex items-center gap-3 text-sm text-gray-500 mt-1 flex-wrap">
+                        <span>🕐 ${taskTime}</span>
+                        <span>📅 ${dayOptions[taskDay]}</span>
+                        <span>${categoryOptions[category]}</span>
+                        <span>${priorityIcons[priority]} ${priority === 'high' ? 'Làm ngay nhé' : priority === 'medium' ? 'Làm sớm nha' : 'Cứ chill thôi'}</span>
+                    </div>
+                </div>
+                <button 
+                    onclick="deleteTask(${currentTaskId}, '${period}')"
+                    class="text-red-400 hover:text-red-600 transition-colors duration-200 p-1"
+                    title="Xóa công việc"
+                >
+                    🗑️
+                </button>
+            `;
+            
+            taskList.appendChild(taskItem);
+            input.value = '';
+            
+            // Sắp xếp lại theo độ ưu tiên
+            sortTasksByPriority(period);
+            updateStats();
+        }
+        
+        function toggleTask(taskId, period) {
+            const checkbox = document.getElementById(`checkbox-${taskId}`);
+            const label = document.getElementById(`label-${taskId}`);
+            
+            if (checkbox.checked) {
+                label.classList.add('completed-task');
+            } else {
+                label.classList.remove('completed-task');
+            }
+            
+            updateStats();
+        }
+        
+        function deleteTask(taskId, period) {
+            const taskItem = document.getElementById(`task-${taskId}`);
+            taskItem.remove();
+            updateStats();
+        }
+        
+        function sortTasksByPriority(period) {
+            const taskList = document.getElementById(`${period}-tasks`);
+            const tasks = Array.from(taskList.children);
+            
+            const priorityOrder = { high: 0, medium: 1, low: 2 };
+            
+            tasks.sort((a, b) => {
+                const aPriority = a.dataset.priority;
+                const bPriority = b.dataset.priority;
+                return priorityOrder[aPriority] - priorityOrder[bPriority];
             });
-        });
+            
+            // Xóa tất cả và thêm lại theo thứ tự mới
+            taskList.innerHTML = '';
+            tasks.forEach(task => taskList.appendChild(task));
+        }
+        
+        function updateStats() {
+            const morningTasks = document.querySelectorAll('#morning-tasks li');
+            const afternoonTasks = document.querySelectorAll('#afternoon-tasks li');
+            
+            const morningCompleted = document.querySelectorAll('#morning-tasks input[type="checkbox"]:checked').length;
+            const afternoonCompleted = document.querySelectorAll('#afternoon-tasks input[type="checkbox"]:checked').length;
+            
+            document.getElementById('morning-total').textContent = morningTasks.length;
+            document.getElementById('morning-completed').textContent = morningCompleted;
+            document.getElementById('afternoon-total').textContent = afternoonTasks.length;
+            document.getElementById('afternoon-completed').textContent = afternoonCompleted;
+        }
+        
+        function downloadTemplate() {
+            // Tạo dữ liệu mẫu
+            const templateData = [
+                {
+                    'Buổi': 'Sáng',
+                    'Công việc': 'Họp team standup',
+                    'Giờ': '09:00',
+                    'Ngày': 'Thứ 2',
+                    'Loại': 'Công việc',
+                    'Độ ưu tiên': 'Làm ngay nhé',
+                    'Hoàn thành': 'Chưa'
+                },
+                {
+                    'Buổi': 'Sáng',
+                    'Công việc': 'Đọc sách 30 phút',
+                    'Giờ': '07:30',
+                    'Ngày': 'Thứ 2',
+                    'Loại': 'Học tập',
+                    'Độ ưu tiên': 'Làm sớm nha',
+                    'Hoàn thành': 'Chưa'
+                },
+                {
+                    'Buổi': 'Chiều',
+                    'Công việc': 'Tập thể dục',
+                    'Giờ': '17:00',
+                    'Ngày': 'Thứ 2',
+                    'Loại': 'Sức khỏe',
+                    'Độ ưu tiên': 'Cứ chill thôi',
+                    'Hoàn thành': 'Chưa'
+                },
+                {
+                    'Buổi': 'Chiều',
+                    'Công việc': 'Nấu ăn tối',
+                    'Giờ': '18:30',
+                    'Ngày': 'Thứ 2',
+                    'Loại': 'Cá nhân',
+                    'Độ ưu tiên': 'Làm sớm nha',
+                    'Hoàn thành': 'Chưa'
+                }
+            ];
+            
+            // Tạo workbook và worksheet
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(templateData);
+            
+            // Thêm worksheet vào workbook
+            XLSX.utils.book_append_sheet(wb, ws, 'Mẫu công việc');
+            
+            // Xuất file mẫu
+            XLSX.writeFile(wb, 'Mau-danh-sach-cong-viec.xlsx');
+            
+            showNotification('Đã tải xuống file mẫu Excel!', 'success');
+        }
+        
+        function exportExcel() {
+            const data = [];
+            
+            // Lấy dữ liệu từ buổi sáng
+            const morningTasks = document.querySelectorAll('#morning-tasks li');
+            morningTasks.forEach(task => {
+                const checkbox = task.querySelector('input[type="checkbox"]');
+                const label = task.querySelector('label');
+                const details = task.querySelector('.text-sm').textContent;
+                
+                // Tách thông tin từ details
+                const timeMatch = details.match(/🕐 (\d{2}:\d{2})/);
+                const dayMatch = details.match(/📅 ([^💼📚💪🏠]+)/);
+                const categoryMatch = details.match(/(💼|📚|💪|🏠) ([^🔴🟡🟢]+)/);
+                const priorityMatch = details.match(/(🔴|🟡|🟢) (.+)/);
+                
+                data.push({
+                    'Buổi': 'Sáng',
+                    'Công việc': label.textContent,
+                    'Giờ': timeMatch ? timeMatch[1] : '',
+                    'Ngày': dayMatch ? dayMatch[1].trim() : '',
+                    'Loại': categoryMatch ? categoryMatch[2].trim() : '',
+                    'Độ ưu tiên': priorityMatch ? priorityMatch[2].trim() : '',
+                    'Hoàn thành': checkbox.checked ? 'Có' : 'Chưa'
+                });
+            });
+            
+            // Lấy dữ liệu từ buổi chiều
+            const afternoonTasks = document.querySelectorAll('#afternoon-tasks li');
+            afternoonTasks.forEach(task => {
+                const checkbox = task.querySelector('input[type="checkbox"]');
+                const label = task.querySelector('label');
+                const details = task.querySelector('.text-sm').textContent;
+                
+                // Tách thông tin từ details
+                const timeMatch = details.match(/🕐 (\d{2}:\d{2})/);
+                const dayMatch = details.match(/📅 ([^💼📚💪🏠]+)/);
+                const categoryMatch = details.match(/(💼|📚|💪|🏠) ([^🔴🟡🟢]+)/);
+                const priorityMatch = details.match(/(🔴|🟡|🟢) (.+)/);
+                
+                data.push({
+                    'Buổi': 'Chiều',
+                    'Công việc': label.textContent,
+                    'Giờ': timeMatch ? timeMatch[1] : '',
+                    'Ngày': dayMatch ? dayMatch[1].trim() : '',
+                    'Loại': categoryMatch ? categoryMatch[2].trim() : '',
+                    'Độ ưu tiên': priorityMatch ? priorityMatch[2].trim() : '',
+                    'Hoàn thành': checkbox.checked ? 'Có' : 'Chưa'
+                });
+            });
+            
+            if (data.length === 0) {
+                showNotification('Không có dữ liệu để xuất!', 'warning');
+                return;
+            }
+            
+            // Tạo workbook và worksheet
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(data);
+            
+            // Thêm worksheet vào workbook
+            XLSX.utils.book_append_sheet(wb, ws, 'Danh sách công việc');
+            
+            // Xuất file
+            const today = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `Danh-sach-cong-viec-${today}.xlsx`);
+            
+            showNotification('Đã xuất file Excel thành công!', 'success');
+        }
+        
+        function importExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Lấy sheet đầu tiên
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    
+                    // Chuyển đổi thành JSON
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    // Xóa tất cả task hiện tại
+                    document.getElementById('morning-tasks').innerHTML = '';
+                    document.getElementById('afternoon-tasks').innerHTML = '';
+                    taskId = 0;
+                    
+                    // Thêm từng task từ Excel
+                    jsonData.forEach(row => {
+                        if (row['Công việc']) {
+                            importTaskFromExcel(row);
+                        }
+                    });
+                    
+                    updateStats();
+                    showNotification(`Đã tải lên và nhập ${jsonData.length} công việc từ Excel!`, 'success');
+                    
+                } catch (error) {
+                    showNotification('Lỗi khi đọc file Excel. Vui lòng kiểm tra định dạng file!', 'error');
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+            event.target.value = ''; // Reset input
+        }
+        
+        function importTaskFromExcel(row) {
+            const period = row['Buổi'] === 'Chiều' ? 'afternoon' : 'morning';
+            const taskText = row['Công việc'] || '';
+            const taskTime = row['Giờ'] || '08:00';
+            const taskDay = convertDayToValue(row['Ngày'] || 'Thứ 2');
+            const category = convertCategoryToValue(row['Loại'] || 'Công việc');
+            const priority = convertPriorityToValue(row['Độ ưu tiên'] || 'Làm sớm nha');
+            const isCompleted = row['Hoàn thành'] === 'Có';
+            
+            if (!taskText.trim()) return;
+            
+            const taskList = document.getElementById(`${period}-tasks`);
+            const currentTaskId = ++taskId;
+            
+            // Lấy icon và text cho category
+            const categoryOptions = {
+                work: '💼 Công việc',
+                study: '📚 Học tập',
+                health: '💪 Sức khỏe',
+                personal: '🏠 Cá nhân'
+            };
+            
+            // Lấy text cho ngày
+            const dayOptions = {
+                monday: 'Thứ 2',
+                tuesday: 'Thứ 3',
+                wednesday: 'Thứ 4',
+                thursday: 'Thứ 5',
+                friday: 'Thứ 6',
+                saturday: 'Thứ 7',
+                sunday: 'Chủ nhật'
+            };
+            
+            // Lấy màu cho priority
+            const priorityColors = {
+                high: 'border-l-red-400 bg-red-50/50',
+                medium: 'border-l-yellow-400 bg-yellow-50/50',
+                low: 'border-l-green-400 bg-green-50/50'
+            };
+            
+            const priorityIcons = {
+                high: '🔴',
+                medium: '🟡',
+                low: '🟢'
+            };
+            
+            const taskItem = document.createElement('li');
+            taskItem.className = `flex items-center gap-3 p-3 bg-white/50 rounded-lg border-l-4 ${priorityColors[priority]} hover:bg-white/70 transition-colors duration-200`;
+            taskItem.id = `task-${currentTaskId}`;
+            taskItem.dataset.priority = priority;
+            
+            taskItem.innerHTML = `
+                <input 
+                    type="checkbox" 
+                    class="custom-checkbox" 
+                    id="checkbox-${currentTaskId}"
+                    onchange="toggleTask(${currentTaskId}, '${period}')"
+                    ${isCompleted ? 'checked' : ''}
+                >
+                <div class="flex-1">
+                    <label for="checkbox-${currentTaskId}" class="cursor-pointer text-gray-700 block font-medium ${isCompleted ? 'completed-task' : ''}" id="label-${currentTaskId}">
+                        ${taskText}
+                    </label>
+                    <div class="flex items-center gap-3 text-sm text-gray-500 mt-1 flex-wrap">
+                        <span>🕐 ${taskTime}</span>
+                        <span>📅 ${dayOptions[taskDay]}</span>
+                        <span>${categoryOptions[category]}</span>
+                        <span>${priorityIcons[priority]} ${priority === 'high' ? 'Làm ngay nhé' : priority === 'medium' ? 'Làm sớm nha' : 'Cứ chill thôi'}</span>
+                    </div>
+                </div>
+                <button 
+                    onclick="deleteTask(${currentTaskId}, '${period}')"
+                    class="text-red-400 hover:text-red-600 transition-colors duration-200 p-1"
+                    title="Xóa công việc"
+                >
+                    🗑️
+                </button>
+            `;
+            
+            taskList.appendChild(taskItem);
+            sortTasksByPriority(period);
+        }
+        
+        function convertDayToValue(dayText) {
+            const dayMap = {
+                'Thứ 2': 'monday',
+                'Thứ 3': 'tuesday', 
+                'Thứ 4': 'wednesday',
+                'Thứ 5': 'thursday',
+                'Thứ 6': 'friday',
+                'Thứ 7': 'saturday',
+                'Chủ nhật': 'sunday'
+            };
+            return dayMap[dayText] || 'monday';
+        }
+        
+        function convertCategoryToValue(categoryText) {
+            const categoryMap = {
+                'Công việc': 'work',
+                'Học tập': 'study',
+                'Sức khỏe': 'health',
+                'Cá nhân': 'personal'
+            };
+            return categoryMap[categoryText] || 'work';
+        }
+        
+        function convertPriorityToValue(priorityText) {
+            const priorityMap = {
+                'Làm ngay nhé': 'high',
+                'Làm sớm nha': 'medium',
+                'Cứ chill thôi': 'low'
+            };
+            return priorityMap[priorityText] || 'medium';
+        }
+        
+        function exportWallpaper() {
+            // Tạo canvas với kích thước điện thoại (9:16)
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Kích thước cho điện thoại (1080x1920)
+            canvas.width = 1080;
+            canvas.height = 1920;
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#fdf2f8'); // pink-50
+            gradient.addColorStop(1, '#eff6ff'); // blue-50
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Thiết lập font
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#374151'; // gray-700
+            
+            // Tiêu đề
+            ctx.font = 'bold 60px Arial';
+            ctx.fillText('📝 Danh Sách Công Việc', canvas.width / 2, 120);
+            
+            // Ngày hiện tại
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('vi-VN', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            ctx.font = '36px Arial';
+            ctx.fillStyle = '#6b7280'; // gray-500
+            ctx.fillText(dateStr, canvas.width / 2, 180);
+            
+            let yPos = 280;
+            
+            // Vẽ phần buổi sáng
+            ctx.fillStyle = '#059669'; // emerald-600
+            ctx.font = 'bold 48px Arial';
+            ctx.fillText('🌅 Buổi Sáng', canvas.width / 2, yPos);
+            yPos += 80;
+            
+            const morningTasks = document.querySelectorAll('#morning-tasks li');
+            morningTasks.forEach((task, index) => {
+                if (yPos > canvas.height - 200) return; // Tránh vượt quá canvas
+                
+                const checkbox = task.querySelector('input[type="checkbox"]');
+                const label = task.querySelector('label');
+                const details = task.querySelector('.text-sm').textContent;
+                
+                // Tách thông tin
+                const timeMatch = details.match(/🕐 (\d{2}:\d{2})/);
+                const dayMatch = details.match(/📅 ([^💼📚💪🏠]+)/);
+                const priorityMatch = details.match(/(🔴|🟡|🟢)/);
+                
+                // Màu dựa trên trạng thái
+                ctx.fillStyle = checkbox.checked ? '#9ca3af' : '#374151'; // gray-400 : gray-700
+                ctx.font = '32px Arial';
+                
+                // Vẽ checkbox
+                const checkboxX = 100;
+                const checkboxY = yPos - 25;
+                ctx.strokeStyle = '#d1d5db';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(checkboxX, checkboxY, 30, 30);
+                
+                if (checkbox.checked) {
+                    ctx.fillStyle = '#10b981';
+                    ctx.fillRect(checkboxX + 3, checkboxY + 3, 24, 24);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 24px Arial';
+                    ctx.fillText('✓', checkboxX + 15, checkboxY + 22);
+                }
+                
+                // Vẽ text công việc
+                ctx.fillStyle = checkbox.checked ? '#9ca3af' : '#374151';
+                ctx.font = checkbox.checked ? '32px Arial' : 'bold 32px Arial';
+                ctx.textAlign = 'left';
+                
+                // Cắt text nếu quá dài
+                let taskText = label.textContent;
+                if (taskText.length > 35) {
+                    taskText = taskText.substring(0, 32) + '...';
+                }
+                ctx.fillText(taskText, 150, yPos);
+                
+                // Vẽ thông tin chi tiết
+                ctx.font = '24px Arial';
+                ctx.fillStyle = '#6b7280';
+                const timeText = timeMatch ? timeMatch[1] : '';
+                const dayText = dayMatch ? dayMatch[1].trim() : '';
+                const priorityIcon = priorityMatch ? priorityMatch[1] : '';
+                
+                ctx.fillText(`${timeText} • ${dayText} ${priorityIcon}`, 150, yPos + 35);
+                
+                yPos += 90;
+            });
+            
+            // Vẽ phần buổi chiều
+            yPos += 40;
+            ctx.fillStyle = '#7c3aed'; // purple-600
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('🌇 Buổi Chiều', canvas.width / 2, yPos);
+            yPos += 80;
+            
+            const afternoonTasks = document.querySelectorAll('#afternoon-tasks li');
+            afternoonTasks.forEach((task, index) => {
+                if (yPos > canvas.height - 200) return; // Tránh vượt quá canvas
+                
+                const checkbox = task.querySelector('input[type="checkbox"]');
+                const label = task.querySelector('label');
+                const details = task.querySelector('.text-sm').textContent;
+                
+                // Tách thông tin
+                const timeMatch = details.match(/🕐 (\d{2}:\d{2})/);
+                const dayMatch = details.match(/📅 ([^💼📚💪🏠]+)/);
+                const priorityMatch = details.match(/(🔴|🟡|🟢)/);
+                
+                // Vẽ checkbox
+                const checkboxX = 100;
+                const checkboxY = yPos - 25;
+                ctx.strokeStyle = '#d1d5db';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(checkboxX, checkboxY, 30, 30);
+                
+                if (checkbox.checked) {
+                    ctx.fillStyle = '#10b981';
+                    ctx.fillRect(checkboxX + 3, checkboxY + 3, 24, 24);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('✓', checkboxX + 15, checkboxY + 22);
+                }
+                
+                // Vẽ text công việc
+                ctx.fillStyle = checkbox.checked ? '#9ca3af' : '#374151';
+                ctx.font = checkbox.checked ? '32px Arial' : 'bold 32px Arial';
+                ctx.textAlign = 'left';
+                
+                // Cắt text nếu quá dài
+                let taskText = label.textContent;
+                if (taskText.length > 35) {
+                    taskText = taskText.substring(0, 32) + '...';
+                }
+                ctx.fillText(taskText, 150, yPos);
+                
+                // Vẽ thông tin chi tiết
+                ctx.font = '24px Arial';
+                ctx.fillStyle = '#6b7280';
+                const timeText = timeMatch ? timeMatch[1] : '';
+                const dayText = dayMatch ? dayMatch[1].trim() : '';
+                const priorityIcon = priorityMatch ? priorityMatch[1] : '';
+                
+                ctx.fillText(`${timeText} • ${dayText} ${priorityIcon}`, 150, yPos + 35);
+                
+                yPos += 90;
+            });
+            
+            // Thêm thống kê ở cuối
+            if (yPos < canvas.height - 300) {
+                yPos = canvas.height - 250;
+                
+                ctx.fillStyle = '#374151';
+                ctx.font = 'bold 36px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('📊 Thống Kê', canvas.width / 2, yPos);
+                
+                yPos += 60;
+                
+                const morningTotal = document.getElementById('morning-total').textContent;
+                const morningCompleted = document.getElementById('morning-completed').textContent;
+                const afternoonTotal = document.getElementById('afternoon-total').textContent;
+                const afternoonCompleted = document.getElementById('afternoon-completed').textContent;
+                
+                ctx.font = '28px Arial';
+                ctx.fillStyle = '#059669';
+                ctx.fillText(`Sáng: ${morningCompleted}/${morningTotal} hoàn thành`, canvas.width / 2, yPos);
+                
+                yPos += 40;
+                ctx.fillStyle = '#7c3aed';
+                ctx.fillText(`Chiều: ${afternoonCompleted}/${afternoonTotal} hoàn thành`, canvas.width / 2, yPos);
+            }
+            
+            // Tải xuống hình ảnh
+            const link = document.createElement('a');
+            const today2 = new Date().toISOString().split('T')[0];
+            link.download = `todo-wallpaper-${today2}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            
+            showNotification('Đã xuất hình nền điện thoại thành công!', 'success');
+        }
+        
+        function showNotification(message, type) {
+            // Tạo thông báo
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transition-all duration-300 ${
+                type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
+                type === 'error' ? 'bg-red-100 text-red-800 border border-red-200' :
+                'bg-yellow-100 text-yellow-800 border border-yellow-200'
+            }`;
+            
+            notification.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span>${type === 'success' ? '✅' : type === 'error' ? '❌' : '⚠️'}</span>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Tự động xóa sau 3 giây
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99075aace1e2fe11',t:'MTc2MDc4MzM2NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'990ce7c4969d9626',t:'MTc2MDg0MTU3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
+
+
