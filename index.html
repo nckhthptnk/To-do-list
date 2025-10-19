@@ -57,6 +57,105 @@
             border-color: #a7f3d0;
             box-shadow: 0 0 0 3px rgba(167, 243, 208, 0.1);
         }
+        
+        /* Theme Colors */
+        .theme-buttercup {
+            background: linear-gradient(135deg, #fffef7 0%, #fefce8 100%) !important;
+            border-color: #fbbf24 !important;
+        }
+        .theme-buttercup .text-emerald-800, .theme-buttercup .text-purple-800 {
+            color: #92400e !important;
+        }
+        .theme-buttercup .bg-emerald-200, .theme-buttercup .bg-purple-200 {
+            background-color: #fef3c7 !important;
+        }
+        .theme-buttercup .hover\\:bg-emerald-300:hover, .theme-buttercup .hover\\:bg-purple-300:hover {
+            background-color: #fde68a !important;
+        }
+        
+        .theme-soft-peach {
+            background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%) !important;
+            border-color: #fb923c !important;
+        }
+        .theme-soft-peach .text-emerald-800, .theme-soft-peach .text-purple-800 {
+            color: #c2410c !important;
+        }
+        .theme-soft-peach .bg-emerald-200, .theme-soft-peach .bg-purple-200 {
+            background-color: #fed7aa !important;
+        }
+        .theme-soft-peach .hover\\:bg-emerald-300:hover, .theme-soft-peach .hover\\:bg-purple-300:hover {
+            background-color: #fdba74 !important;
+        }
+        
+        .theme-pale-pink {
+            background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%) !important;
+            border-color: #f472b6 !important;
+        }
+        .theme-pale-pink .text-emerald-800, .theme-pale-pink .text-purple-800 {
+            color: #be185d !important;
+        }
+        .theme-pale-pink .bg-emerald-200, .theme-pale-pink .bg-purple-200 {
+            background-color: #fbcfe8 !important;
+        }
+        .theme-pale-pink .hover\\:bg-emerald-300:hover, .theme-pale-pink .hover\\:bg-purple-300:hover {
+            background-color: #f9a8d4 !important;
+        }
+        
+        .theme-lavender {
+            background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%) !important;
+            border-color: #a78bfa !important;
+        }
+        .theme-lavender .text-emerald-800, .theme-lavender .text-purple-800 {
+            color: #6d28d9 !important;
+        }
+        .theme-lavender .bg-emerald-200, .theme-lavender .bg-purple-200 {
+            background-color: #ddd6fe !important;
+        }
+        .theme-lavender .hover\\:bg-emerald-300:hover, .theme-lavender .hover\\:bg-purple-300:hover {
+            background-color: #c4b5fd !important;
+        }
+        
+        .theme-cool-aqua {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+            border-color: #38bdf8 !important;
+        }
+        .theme-cool-aqua .text-emerald-800, .theme-cool-aqua .text-purple-800 {
+            color: #0369a1 !important;
+        }
+        .theme-cool-aqua .bg-emerald-200, .theme-cool-aqua .bg-purple-200 {
+            background-color: #bae6fd !important;
+        }
+        .theme-cool-aqua .hover\\:bg-emerald-300:hover, .theme-cool-aqua .hover\\:bg-purple-300:hover {
+            background-color: #7dd3fc !important;
+        }
+        
+        .theme-meadow-green {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important;
+            border-color: #4ade80 !important;
+        }
+        .theme-meadow-green .text-emerald-800, .theme-meadow-green .text-purple-800 {
+            color: #166534 !important;
+        }
+        .theme-meadow-green .bg-emerald-200, .theme-meadow-green .bg-purple-200 {
+            background-color: #bbf7d0 !important;
+        }
+        .theme-meadow-green .hover\\:bg-emerald-300:hover, .theme-meadow-green .hover\\:bg-purple-300:hover {
+            background-color: #86efac !important;
+        }
+        
+        .theme-soft-red {
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
+            border-color: #f87171 !important;
+        }
+        .theme-soft-red .text-emerald-800, .theme-soft-red .text-purple-800 {
+            color: #dc2626 !important;
+        }
+        .theme-soft-red .bg-emerald-200, .theme-soft-red .bg-purple-200 {
+            background-color: #fecaca !important;
+        }
+        .theme-soft-red .hover\\:bg-emerald-300:hover, .theme-soft-red .hover\\:bg-purple-300:hover {
+            background-color: #fca5a5 !important;
+        }
     </style>
 </head>
 <body class="min-h-full bg-gradient-to-br from-pink-50 to-blue-50 p-4">
@@ -105,10 +204,21 @@
 
         <div class="grid md:grid-cols-2 gap-6">
             <!-- Phần Sáng -->
-            <div class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/50">
-                <div class="flex items-center mb-4">
-                    <span class="text-2xl mr-3">🌅</span>
-                    <h2 class="text-xl font-semibold text-gray-700">Buổi Sáng</h2>
+            <div id="morning-section" class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/50">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <span class="text-2xl mr-3">🌅</span>
+                        <h2 class="text-xl font-semibold text-gray-700">Buổi Sáng</h2>
+                    </div>
+                    <select id="morning-color" class="task-input w-40 text-sm" onchange="changeThemeColor('morning', this.value)">
+                        <option value="buttercup">🟡 Buttercup</option>
+                        <option value="soft-peach">🍑 Soft Peach</option>
+                        <option value="pale-pink">🌸 Pale Pink</option>
+                        <option value="lavender">💜 Lavender</option>
+                        <option value="cool-aqua">💙 Cool Aqua</option>
+                        <option value="meadow-green">💚 Meadow Green</option>
+                        <option value="soft-red">❤️ Soft Red</option>
+                    </select>
                 </div>
                 
                 <form class="mb-4" onsubmit="addTask(event, 'morning')">
@@ -116,8 +226,8 @@
                         <div class="flex gap-2 flex-wrap">
                             <input 
                                 type="time" 
-                                id="morning-time"
-                                class="task-input w-28"
+                                id="morning-time" 
+                                class="task-input w-28" 
                                 value="08:00"
                             >
                             <select id="morning-day" class="task-input w-32">
@@ -163,10 +273,21 @@
             </div>
 
             <!-- Phần Chiều -->
-            <div class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/50">
-                <div class="flex items-center mb-4">
-                    <span class="text-2xl mr-3">🌇</span>
-                    <h2 class="text-xl font-semibold text-gray-700">Buổi Chiều</h2>
+            <div id="afternoon-section" class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/50">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center">
+                        <span class="text-2xl mr-3">🌇</span>
+                        <h2 class="text-xl font-semibold text-gray-700">Buổi Chiều</h2>
+                    </div>
+                    <select id="afternoon-color" class="task-input w-40 text-sm" onchange="changeThemeColor('afternoon', this.value)">
+                        <option value="buttercup">🟡 Buttercup</option>
+                        <option value="soft-peach">🍑 Soft Peach</option>
+                        <option value="pale-pink">🌸 Pale Pink</option>
+                        <option value="lavender" selected>💜 Lavender</option>
+                        <option value="cool-aqua">💙 Cool Aqua</option>
+                        <option value="meadow-green">💚 Meadow Green</option>
+                        <option value="soft-red">❤️ Soft Red</option>
+                    </select>
                 </div>
                 
                 <form class="mb-4" onsubmit="addTask(event, 'afternoon')">
@@ -174,8 +295,8 @@
                         <div class="flex gap-2 flex-wrap">
                             <input 
                                 type="time" 
-                                id="afternoon-time"
-                                class="task-input w-28"
+                                id="afternoon-time" 
+                                class="task-input w-28" 
                                 value="14:00"
                             >
                             <select id="afternoon-day" class="task-input w-32">
@@ -262,6 +383,7 @@
             const taskDay = dayInput.value;
             const category = categoryInput.value;
             const priority = priorityInput.value;
+            const isCompleted = false;
             
             if (taskText === '') return;
             
@@ -311,9 +433,10 @@
                     class="custom-checkbox" 
                     id="checkbox-${currentTaskId}"
                     onchange="toggleTask(${currentTaskId}, '${period}')"
+                    ${isCompleted ? 'checked' : ''}
                 >
                 <div class="flex-1">
-                    <label for="checkbox-${currentTaskId}" class="cursor-pointer text-gray-700 block font-medium" id="label-${currentTaskId}">
+                    <label for="checkbox-${currentTaskId}" class="cursor-pointer text-gray-700 block font-medium ${isCompleted ? 'completed-task' : ''}" id="label-${currentTaskId}">
                         ${taskText}
                     </label>
                     <div class="flex items-center gap-3 text-sm text-gray-500 mt-1 flex-wrap">
@@ -865,6 +988,38 @@
             showNotification('Đã xuất hình nền điện thoại thành công!', 'success');
         }
         
+        function changeThemeColor(period, color) {
+            const section = document.getElementById(`${period}-section`);
+            
+            // Xóa tất cả class theme cũ
+            section.classList.remove('theme-buttercup', 'theme-soft-peach', 'theme-pale-pink', 'theme-lavender', 'theme-cool-aqua', 'theme-meadow-green', 'theme-soft-red');
+            
+            // Thêm class theme mới
+            section.classList.add(`theme-${color}`);
+            
+            // Lưu lựa chọn vào localStorage
+            localStorage.setItem(`${period}-theme`, color);
+            
+            showNotification(`Đã đổi màu ${period === 'morning' ? 'buổi sáng' : 'buổi chiều'} thành công!`, 'success');
+        }
+        
+        function loadSavedThemes() {
+            // Tải theme đã lưu cho buổi sáng
+            const morningTheme = localStorage.getItem('morning-theme') || 'buttercup';
+            const afternoonTheme = localStorage.getItem('afternoon-theme') || 'lavender';
+            
+            // Áp dụng theme
+            changeThemeColor('morning', morningTheme);
+            changeThemeColor('afternoon', afternoonTheme);
+            
+            // Cập nhật select
+            document.getElementById('morning-color').value = morningTheme;
+            document.getElementById('afternoon-color').value = afternoonTheme;
+        }
+        
+        // Tải theme khi trang load
+        window.addEventListener('load', loadSavedThemes);
+        
         function showNotification(message, type) {
             // Tạo thông báo
             const notification = document.createElement('div');
@@ -895,7 +1050,5 @@
             }, 3000);
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'990ce7c4969d9626',t:'MTc2MDg0MTU3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'990f98f0d114fd2e',t:'MTc2MDg2OTc5OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
-
-
