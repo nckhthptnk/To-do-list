@@ -1,1784 +1,901 @@
 <!DOCTYPE html>
-<html lang="vi" class="h-full">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thời Khóa Biểu Tối Giản</title>
+    <title>To-Do List</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body {
             box-sizing: border-box;
         }
         
-        .schedule-cell {
-            min-height: 80px;
+        .custom-checkbox {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #d1d5db;
+            border-radius: 4px;
+            background-color: white;
+            cursor: pointer;
+            position: relative;
             transition: all 0.2s ease;
         }
         
-        .schedule-cell:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        .custom-checkbox:checked {
+            background-color: #a7f3d0;
+            border-color: #10b981;
         }
         
-        .note-cell {
-            min-height: 60px;
-            transition: all 0.2s ease;
+        .custom-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #065f46;
+            font-weight: bold;
+            font-size: 14px;
         }
         
-        .note-cell:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        .completed-task {
+            text-decoration: line-through;
+            opacity: 0.6;
         }
         
-        input[type="text"], textarea {
-            transition: all 0.2s ease;
+        .task-input {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 8px 12px;
+            background-color: #fefefe;
+            transition: border-color 0.2s ease;
         }
         
-        input[type="text"]:focus, textarea:focus {
-            transform: scale(1.02);
-        }
-        
-        .btn {
-            transition: all 0.2s ease;
-        }
-        
-        .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        .task-input:focus {
+            outline: none;
+            border-color: #a7f3d0;
+            box-shadow: 0 0 0 3px rgba(167, 243, 208, 0.1);
         }
     </style>
 </head>
-<body class="h-full bg-gray-50 font-sans">
-    <div class="min-h-full p-4">
-        <header class="text-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">📅 Thời Khóa Biểu</h1>
-            <p class="text-gray-600">Đơn giản & Hiệu quả</p>
+<body class="min-h-full bg-gradient-to-br from-pink-50 to-blue-50 p-4">
+    <div class="max-w-4xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-700 mb-2">📝 Danh Sách Công Việc</h1>
+            <p class="text-gray-500">Quản lý công việc hàng ngày của bạn</p>
+            
+            <!-- Nút Excel và Hình nền -->
+            <div class="flex justify-center gap-4 mt-4 flex-wrap">
+                <button 
+                    onclick="downloadTemplate()"
+                    class="bg-orange-200 hover:bg-orange-300 text-orange-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium flex items-center gap-2"
+                >
+                    📋 Tải Mẫu
+                </button>
+                <div class="relative">
+                    <input 
+                        type="file" 
+                        id="excel-import" 
+                        accept=".xlsx,.xls" 
+                        class="hidden"
+                        onchange="importExcel(event)"
+                    >
+                    <button 
+                        onclick="document.getElementById('excel-import').click()"
+                        class="bg-blue-200 hover:bg-blue-300 text-blue-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium flex items-center gap-2"
+                    >
+                        📤 Tải Excel Lên
+                    </button>
+                </div>
+                <button 
+                    onclick="exportExcel()"
+                    class="bg-green-200 hover:bg-green-300 text-green-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium flex items-center gap-2"
+                >
+                    💾 Xuất Excel
+                </button>
+                <button 
+                    onclick="exportWallpaper()"
+                    class="bg-purple-200 hover:bg-purple-300 text-purple-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium flex items-center gap-2"
+                >
+                    📱 Xuất Hình Nền
+                </button>
+            </div>
         </header>
 
-        <div class="max-w-6xl mx-auto">
-            <!-- Nút điều khiển -->
-            <div class="flex justify-center gap-3 mb-6 flex-wrap">
-                <button onclick="saveSchedule()" class="btn bg-green-400 hover:bg-green-500 text-white px-5 py-2 rounded-full font-medium shadow-md">
-                    💾 Lưu
-                </button>
-                <button onclick="exportAsImage()" class="btn bg-blue-400 hover:bg-blue-500 text-white px-5 py-2 rounded-full font-medium shadow-md">
-                    📸 Xuất hình
-                </button>
-                <button onclick="toggleColorPalette()" class="btn bg-pink-400 hover:bg-pink-500 text-white px-5 py-2 rounded-full font-medium shadow-md">
-                    🎨 Chọn màu
-                </button>
-                <button onclick="downloadTemplate()" class="btn bg-purple-400 hover:bg-purple-500 text-white px-5 py-2 rounded-full font-medium shadow-md">
-                    📋 Tải mẫu Excel
-                </button>
-                <label for="excelFile" class="btn bg-orange-400 hover:bg-orange-500 text-white px-5 py-2 rounded-full font-medium shadow-md cursor-pointer">
-                    📂 Tải Excel lên
-                </label>
-                <input type="file" id="excelFile" accept=".xlsx,.xls" class="hidden" onchange="importFromExcel(event)">
-                <button onclick="exportToExcel()" class="btn bg-teal-400 hover:bg-teal-500 text-white px-5 py-2 rounded-full font-medium shadow-md">
-                    📊 Xuất Excel
-                </button>
-                <button onclick="clearSchedule()" class="btn bg-red-400 hover:bg-red-500 text-white px-5 py-2 rounded-full font-medium shadow-md">
-                    🗑️ Xóa
-                </button>
-            </div>
-
-            <!-- Bảng chọn màu pastel -->
-            <div id="colorPalette" class="hidden bg-white rounded-2xl shadow-lg p-6 mb-6 border-2 border-gray-100">
-                <div class="text-center mb-4">
-                    <h3 class="text-lg font-bold text-gray-800 mb-2">🎨 Chọn màu cho tiêu đề</h3>
-                    <p class="text-sm text-gray-600">Chọn màu cho dòng tiêu đề và cột thời gian</p>
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Phần Sáng -->
+            <div class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/50">
+                <div class="flex items-center mb-4">
+                    <span class="text-2xl mr-3">🌅</span>
+                    <h2 class="text-xl font-semibold text-gray-700">Buổi Sáng</h2>
                 </div>
                 
-                <div class="grid grid-cols-3 gap-4 mb-4">
-                    <div class="color-option" data-color="buttercup" onclick="selectColor('buttercup')">
-                        <div class="w-16 h-16 rounded-xl cursor-pointer border-2 border-yellow-200 hover:border-yellow-300 transition-all duration-200 flex items-center justify-center" style="background: #fef3c7;">
-                            <span class="text-xs font-medium text-yellow-800">Buttercup</span>
+                <form class="mb-4" onsubmit="addTask(event, 'morning')">
+                    <div class="space-y-2">
+                        <div class="flex gap-2 flex-wrap">
+                            <input 
+                                type="time" 
+                                id="morning-time"
+                                class="task-input w-28"
+                                value="08:00"
+                            >
+                            <select id="morning-day" class="task-input w-32">
+                                <option value="monday">Thứ 2</option>
+                                <option value="tuesday">Thứ 3</option>
+                                <option value="wednesday">Thứ 4</option>
+                                <option value="thursday">Thứ 5</option>
+                                <option value="friday">Thứ 6</option>
+                                <option value="saturday">Thứ 7</option>
+                                <option value="sunday">Chủ nhật</option>
+                            </select>
+                            <select id="morning-category" class="task-input w-40">
+                                <option value="work">💼 Công việc</option>
+                                <option value="study">📚 Học tập</option>
+                                <option value="health">💪 Sức khỏe</option>
+                                <option value="personal">🏠 Cá nhân</option>
+                            </select>
+                            <select id="morning-priority" class="task-input w-44">
+                                <option value="high">🔴 Làm ngay nhé</option>
+                                <option value="medium" selected>🟡 Làm sớm nha</option>
+                                <option value="low">🟢 Cứ chill thôi</option>
+                            </select>
+                            <input 
+                                type="text" 
+                                id="morning-input"
+                                placeholder="Thêm công việc..."
+                                class="task-input flex-1 min-w-48"
+                                required
+                            >
                         </div>
+                        <button 
+                            type="submit"
+                            class="bg-emerald-200 hover:bg-emerald-300 text-emerald-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium w-full"
+                        >
+                            Thêm Công Việc
+                        </button>
                     </div>
-                    
-                    <div class="color-option" data-color="softpeach" onclick="selectColor('softpeach')">
-                        <div class="w-16 h-16 rounded-xl cursor-pointer border-2 border-orange-200 hover:border-orange-300 transition-all duration-200 flex items-center justify-center" style="background: #fed7d7;">
-                            <span class="text-xs font-medium text-orange-800">Soft Peach</span>
-                        </div>
-                    </div>
-                    
-                    <div class="color-option" data-color="palepink" onclick="selectColor('palepink')">
-                        <div class="w-16 h-16 rounded-xl cursor-pointer border-2 border-pink-200 hover:border-pink-300 transition-all duration-200 flex items-center justify-center" style="background: #fce7f3;">
-                            <span class="text-xs font-medium text-pink-800">Pale Pink</span>
-                        </div>
-                    </div>
-                    
-                    <div class="color-option" data-color="lavender" onclick="selectColor('lavender')">
-                        <div class="w-16 h-16 rounded-xl cursor-pointer border-2 border-purple-200 hover:border-purple-300 transition-all duration-200 flex items-center justify-center" style="background: #e9d5ff;">
-                            <span class="text-xs font-medium text-purple-800">Lavender</span>
-                        </div>
-                    </div>
-                    
-                    <div class="color-option" data-color="coolaqua" onclick="selectColor('coolaqua')">
-                        <div class="w-16 h-16 rounded-xl cursor-pointer border-2 border-cyan-200 hover:border-cyan-300 transition-all duration-200 flex items-center justify-center" style="background: #cffafe;">
-                            <span class="text-xs font-medium text-cyan-800">Cool Aqua</span>
-                        </div>
-                    </div>
-                    
-                    <div class="color-option" data-color="meadowgreen" onclick="selectColor('meadowgreen')">
-                        <div class="w-16 h-16 rounded-xl cursor-pointer border-2 border-green-200 hover:border-green-300 transition-all duration-200 flex items-center justify-center" style="background: #d1fae5;">
-                            <span class="text-xs font-medium text-green-800">Meadow Green</span>
-                        </div>
-                    </div>
+                </form>
+                
+                <ul id="morning-tasks" class="space-y-3">
+                    <!-- Các task buổi sáng sẽ được thêm vào đây -->
+                </ul>
+            </div>
+
+            <!-- Phần Chiều -->
+            <div class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/50">
+                <div class="flex items-center mb-4">
+                    <span class="text-2xl mr-3">🌇</span>
+                    <h2 class="text-xl font-semibold text-gray-700">Buổi Chiều</h2>
                 </div>
                 
-                <div class="text-center">
-                    <div id="selectedColorInfo" class="text-sm text-gray-600 mb-3">
-                        Chưa chọn màu nào
+                <form class="mb-4" onsubmit="addTask(event, 'afternoon')">
+                    <div class="space-y-2">
+                        <div class="flex gap-2 flex-wrap">
+                            <input 
+                                type="time" 
+                                id="afternoon-time"
+                                class="task-input w-28"
+                                value="14:00"
+                            >
+                            <select id="afternoon-day" class="task-input w-32">
+                                <option value="monday">Thứ 2</option>
+                                <option value="tuesday">Thứ 3</option>
+                                <option value="wednesday">Thứ 4</option>
+                                <option value="thursday">Thứ 5</option>
+                                <option value="friday">Thứ 6</option>
+                                <option value="saturday">Thứ 7</option>
+                                <option value="sunday">Chủ nhật</option>
+                            </select>
+                            <select id="afternoon-category" class="task-input w-40">
+                                <option value="work">💼 Công việc</option>
+                                <option value="study">📚 Học tập</option>
+                                <option value="health">💪 Sức khỏe</option>
+                                <option value="personal">🏠 Cá nhân</option>
+                            </select>
+                            <select id="afternoon-priority" class="task-input w-44">
+                                <option value="high">🔴 Làm ngay nhé</option>
+                                <option value="medium" selected>🟡 Làm sớm nha</option>
+                                <option value="low">🟢 Cứ chill thôi</option>
+                            </select>
+                            <input 
+                                type="text" 
+                                id="afternoon-input"
+                                placeholder="Thêm công việc..."
+                                class="task-input flex-1 min-w-48"
+                                required
+                            >
+                        </div>
+                        <button 
+                            type="submit"
+                            class="bg-purple-200 hover:bg-purple-300 text-purple-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium w-full"
+                        >
+                            Thêm Công Việc
+                        </button>
                     </div>
-                    <div class="flex justify-center gap-2 flex-wrap">
-                        <button onclick="applyColorToHeaders()" class="bg-blue-400 hover:bg-blue-500 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md transition-all duration-200">
-                            🎨 Áp dụng cho tiêu đề
-                        </button>
-                        <button onclick="applyColorToNotes()" class="bg-green-400 hover:bg-green-500 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md transition-all duration-200">
-                            📝 Áp dụng cho ghi chú
-                        </button>
-                        <button onclick="resetToDefault()" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-full text-sm font-medium shadow-md transition-all duration-200">
-                            🔄 Về mặc định
-                        </button>
-                    </div>
+                </form>
+                
+                <ul id="afternoon-tasks" class="space-y-3">
+                    <!-- Các task buổi chiều sẽ được thêm vào đây -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- Thống kê -->
+        <div class="mt-8 bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/50">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3 text-center">📊 Thống Kê Hôm Nay</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div class="bg-emerald-100 rounded-lg p-3">
+                    <div class="text-2xl font-bold text-emerald-700" id="morning-total">0</div>
+                    <div class="text-sm text-emerald-600">Sáng - Tổng</div>
                 </div>
-            </div>
-
-            <!-- Thông báo -->
-            <div id="notification" class="hidden fixed top-4 right-4 bg-green-400 text-white px-4 py-2 rounded-full shadow-lg z-50">
-                Đã lưu! ✨
-            </div>
-
-            <!-- Bảng thời khóa biểu -->
-            <div class="bg-white rounded-3xl shadow-lg overflow-hidden border-2 border-gray-100">
-                <table class="w-full">
-                    <thead>
-                        <tr style="background: #d1fae5; color: #065f46;">
-                            <th class="p-3 text-left font-bold">Thời Gian</th>
-                            <th class="p-3 text-center font-bold">Thứ 2</th>
-                            <th class="p-3 text-center font-bold">Thứ 3</th>
-                            <th class="p-3 text-center font-bold">Thứ 4</th>
-                            <th class="p-3 text-center font-bold">Thứ 5</th>
-                            <th class="p-3 text-center font-bold">Thứ 6</th>
-                            <th class="p-3 text-center font-bold">Thứ 7</th>
-                        </tr>
-                    </thead>
-                    <tbody id="scheduleTable">
-                        <!-- Buổi sáng -->
-                        <tr class="bg-orange-200">
-                            <td colspan="7" class="p-2 text-center font-bold text-gray-800">
-                                🌅 BUỔI SÁNG
-                            </td>
-                        </tr>
-                        
-                        <!-- Tiết 1 -->
-                        <tr class="border-b border-gray-100">
-                            <td style="background: #fef3c7; color: #92400e;" class="p-3 font-semibold text-center">
-                                Tiết 1<br><span class="text-xs opacity-80">7:00-7:45</span>
-                            </td>
-                            <td class="schedule-cell p-2" data-period="morning-1" data-day="monday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-1" data-day="tuesday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-1" data-day="wednesday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-1" data-day="thursday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-1" data-day="friday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-1" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Ghi chú sau tiết 1 -->
-                        <tr style="background: #fefce8;">
-                            <td style="background: #fef3c7; color: #92400e;" class="p-2 text-center text-xs font-medium">📝 Ghi chú</td>
-                            <td class="note-cell p-1" data-note="note-after-morning-1" data-day="monday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-1" data-day="tuesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-1" data-day="wednesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-1" data-day="thursday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-1" data-day="friday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-1" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Tiết 2 -->
-                        <tr class="border-b border-gray-100">
-                            <td style="background: #fed7d7; color: #c2410c;" class="p-3 font-semibold text-center">
-                                Tiết 2<br><span class="text-xs opacity-80">7:45-8:30</span>
-                            </td>
-                            <td class="schedule-cell p-2" data-period="morning-2" data-day="monday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-2" data-day="tuesday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-2" data-day="wednesday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-2" data-day="thursday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-2" data-day="friday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-2" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Ghi chú sau tiết 2 -->
-                        <tr style="background: #fef2f2;">
-                            <td style="background: #fed7d7; color: #c2410c;" class="p-2 text-center text-xs font-medium">📝 Ghi chú</td>
-                            <td class="note-cell p-1" data-note="note-after-morning-2" data-day="monday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-2" data-day="tuesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-2" data-day="wednesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-2" data-day="thursday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-2" data-day="friday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-2" data-day="saturday"></td>
-                        </tr>
-                        
-
-                        
-                        <!-- Tiết 3 -->
-                        <tr class="border-b border-gray-100">
-                            <td style="background: #fce7f3; color: #be185d;" class="p-3 font-semibold text-center">
-                                Tiết 3<br><span class="text-xs opacity-80">9:00-9:45</span>
-                            </td>
-                            <td class="schedule-cell p-2" data-period="morning-3" data-day="monday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-3" data-day="tuesday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-3" data-day="wednesday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-3" data-day="thursday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-3" data-day="friday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-3" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Ghi chú sau tiết 3 -->
-                        <tr style="background: #fdf2f8;">
-                            <td style="background: #fce7f3; color: #be185d;" class="p-2 text-center text-xs font-medium">📝 Ghi chú</td>
-                            <td class="note-cell p-1" data-note="note-after-morning-3" data-day="monday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-3" data-day="tuesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-3" data-day="wednesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-3" data-day="thursday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-3" data-day="friday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-3" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Tiết 4 -->
-                        <tr class="border-b border-gray-100">
-                            <td style="background: #e9d5ff; color: #6b21a8;" class="p-3 font-semibold text-center">
-                                Tiết 4<br><span class="text-xs opacity-80">9:45-10:30</span>
-                            </td>
-                            <td class="schedule-cell p-2" data-period="morning-4" data-day="monday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-4" data-day="tuesday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-4" data-day="wednesday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-4" data-day="thursday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-4" data-day="friday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-4" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Ghi chú sau tiết 4 -->
-                        <tr style="background: #f3e8ff;">
-                            <td style="background: #e9d5ff; color: #6b21a8;" class="p-2 text-center text-xs font-medium">📝 Ghi chú</td>
-                            <td class="note-cell p-1" data-note="note-after-morning-4" data-day="monday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-4" data-day="tuesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-4" data-day="wednesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-4" data-day="thursday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-4" data-day="friday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-4" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Tiết 5 -->
-                        <tr class="border-b border-gray-200">
-                            <td style="background: #cffafe; color: #155e75;" class="p-3 font-semibold text-center">
-                                Tiết 5<br><span class="text-xs opacity-80">10:30-11:15</span>
-                            </td>
-                            <td class="schedule-cell p-2" data-period="morning-5" data-day="monday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-5" data-day="tuesday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-5" data-day="wednesday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-5" data-day="thursday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-5" data-day="friday"></td>
-                            <td class="schedule-cell p-2" data-period="morning-5" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Ghi chú sau tiết 5 -->
-                        <tr style="background: #ecfeff;">
-                            <td style="background: #cffafe; color: #155e75;" class="p-2 text-center text-xs font-medium">📝 Ghi chú</td>
-                            <td class="note-cell p-1" data-note="note-after-morning-5" data-day="monday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-5" data-day="tuesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-5" data-day="wednesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-5" data-day="thursday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-5" data-day="friday"></td>
-                            <td class="note-cell p-1" data-note="note-after-morning-5" data-day="saturday"></td>
-                        </tr>
-
-                        <!-- Buổi chiều -->
-                        <tr style="background: #fed7d7;">
-                            <td colspan="7" class="p-2 text-center font-bold text-gray-800">
-                                🌇 BUỔI CHIỀU
-                            </td>
-                        </tr>
-                        
-                        <!-- Tiết 1 chiều -->
-                        <tr class="border-b border-gray-100">
-                            <td style="background: #d1fae5; color: #065f46;" class="p-3 font-semibold text-center">
-                                Tiết 1<br><span class="text-xs opacity-80">13:00-13:45</span>
-                            </td>
-                            <td class="schedule-cell p-2" data-period="afternoon-1" data-day="monday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-1" data-day="tuesday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-1" data-day="wednesday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-1" data-day="thursday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-1" data-day="friday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-1" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Ghi chú sau tiết 1 chiều -->
-                        <tr class="bg-cyan-50">
-                            <td class="bg-cyan-100 p-2 text-center text-xs font-medium text-cyan-700">📝 Ghi chú</td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-1" data-day="monday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-1" data-day="tuesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-1" data-day="wednesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-1" data-day="thursday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-1" data-day="friday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-1" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Tiết 2 chiều -->
-                        <tr class="border-b border-gray-100">
-                            <td class="bg-indigo-200 text-indigo-800 p-3 font-semibold text-center">
-                                Tiết 2<br><span class="text-xs opacity-80">13:45-14:30</span>
-                            </td>
-                            <td class="schedule-cell p-2" data-period="afternoon-2" data-day="monday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-2" data-day="tuesday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-2" data-day="wednesday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-2" data-day="thursday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-2" data-day="friday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-2" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Ghi chú sau tiết 2 chiều -->
-                        <tr class="bg-indigo-50">
-                            <td class="bg-indigo-100 p-2 text-center text-xs font-medium text-indigo-700">📝 Ghi chú</td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-2" data-day="monday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-2" data-day="tuesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-2" data-day="wednesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-2" data-day="thursday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-2" data-day="friday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-2" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Tiết 3 chiều -->
-                        <tr class="border-b border-gray-100">
-                            <td class="bg-teal-200 text-teal-800 p-3 font-semibold text-center">
-                                Tiết 3<br><span class="text-xs opacity-80">14:30-15:15</span>
-                            </td>
-                            <td class="schedule-cell p-2" data-period="afternoon-3" data-day="monday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-3" data-day="tuesday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-3" data-day="wednesday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-3" data-day="thursday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-3" data-day="friday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-3" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Ghi chú sau tiết 3 chiều -->
-                        <tr class="bg-teal-50">
-                            <td class="bg-teal-100 p-2 text-center text-xs font-medium text-teal-700">📝 Ghi chú</td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-3" data-day="monday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-3" data-day="tuesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-3" data-day="wednesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-3" data-day="thursday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-3" data-day="friday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-3" data-day="saturday"></td>
-                        </tr>
-                        
-
-                        
-                        <!-- Tiết 4 chiều -->
-                        <tr class="border-b border-gray-100">
-                            <td class="bg-rose-200 text-rose-800 p-3 font-semibold text-center">
-                                Tiết 4<br><span class="text-xs opacity-80">15:45-16:30</span>
-                            </td>
-                            <td class="schedule-cell p-2" data-period="afternoon-4" data-day="monday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-4" data-day="tuesday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-4" data-day="wednesday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-4" data-day="thursday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-4" data-day="friday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-4" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Ghi chú sau tiết 4 chiều -->
-                        <tr class="bg-rose-50">
-                            <td class="bg-rose-100 p-2 text-center text-xs font-medium text-rose-700">📝 Ghi chú</td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-4" data-day="monday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-4" data-day="tuesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-4" data-day="wednesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-4" data-day="thursday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-4" data-day="friday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-4" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Tiết 5 chiều -->
-                        <tr>
-                            <td class="bg-emerald-200 text-emerald-800 p-3 font-semibold text-center">
-                                Tiết 5<br><span class="text-xs opacity-80">16:30-17:15</span>
-                            </td>
-                            <td class="schedule-cell p-2" data-period="afternoon-5" data-day="monday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-5" data-day="tuesday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-5" data-day="wednesday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-5" data-day="thursday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-5" data-day="friday"></td>
-                            <td class="schedule-cell p-2" data-period="afternoon-5" data-day="saturday"></td>
-                        </tr>
-                        
-                        <!-- Ghi chú sau tiết 5 chiều -->
-                        <tr class="bg-emerald-50">
-                            <td class="bg-emerald-100 p-2 text-center text-xs font-medium text-emerald-700">📝 Ghi chú</td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-5" data-day="monday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-5" data-day="tuesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-5" data-day="wednesday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-5" data-day="thursday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-5" data-day="friday"></td>
-                            <td class="note-cell p-1" data-note="note-after-afternoon-5" data-day="saturday"></td>
-                        </tr>
-
-
-                    </tbody>
-                </table>
+                <div class="bg-emerald-200 rounded-lg p-3">
+                    <div class="text-2xl font-bold text-emerald-800" id="morning-completed">0</div>
+                    <div class="text-sm text-emerald-700">Sáng - Hoàn thành</div>
+                </div>
+                <div class="bg-purple-100 rounded-lg p-3">
+                    <div class="text-2xl font-bold text-purple-700" id="afternoon-total">0</div>
+                    <div class="text-sm text-purple-600">Chiều - Tổng</div>
+                </div>
+                <div class="bg-purple-200 rounded-lg p-3">
+                    <div class="text-2xl font-bold text-purple-800" id="afternoon-completed">0</div>
+                    <div class="text-sm text-purple-700">Chiều - Hoàn thành</div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Khởi tạo các ô nhập liệu
-        function initializeSchedule() {
-            const cells = document.querySelectorAll('.schedule-cell');
-            cells.forEach(cell => {
-                const period = cell.dataset.period;
-                const day = cell.dataset.day;
-                
-                cell.innerHTML = `
-                    <div class="space-y-1">
-                        <input type="text" 
-                               placeholder="Môn học" 
-                               class="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white"
-                               data-field="subject"
-                               id="subject-${period}-${day}">
-                        <input type="text" 
-                               placeholder="Giáo viên" 
-                               class="w-full p-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-blue-300 focus:border-transparent bg-gray-50"
-                               data-field="teacher"
-                               id="teacher-${period}-${day}">
-                        <input type="text" 
-                               placeholder="Phòng học" 
-                               class="w-full p-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-blue-300 focus:border-transparent bg-gray-50"
-                               data-field="location"
-                               id="location-${period}-${day}">
+        let taskId = 0;
+        
+        function addTask(event, period) {
+            event.preventDefault();
+            
+            const input = document.getElementById(`${period}-input`);
+            const timeInput = document.getElementById(`${period}-time`);
+            const dayInput = document.getElementById(`${period}-day`);
+            const categoryInput = document.getElementById(`${period}-category`);
+            const priorityInput = document.getElementById(`${period}-priority`);
+            
+            const taskText = input.value.trim();
+            const taskTime = timeInput.value;
+            const taskDay = dayInput.value;
+            const category = categoryInput.value;
+            const priority = priorityInput.value;
+            
+            if (taskText === '') return;
+            
+            const taskList = document.getElementById(`${period}-tasks`);
+            const currentTaskId = ++taskId;
+            
+            // Lấy icon và text cho category
+            const categoryOptions = {
+                work: '💼 Công việc',
+                study: '📚 Học tập',
+                health: '💪 Sức khỏe',
+                personal: '🏠 Cá nhân'
+            };
+            
+            // Lấy text cho ngày
+            const dayOptions = {
+                monday: 'Thứ 2',
+                tuesday: 'Thứ 3',
+                wednesday: 'Thứ 4',
+                thursday: 'Thứ 5',
+                friday: 'Thứ 6',
+                saturday: 'Thứ 7',
+                sunday: 'Chủ nhật'
+            };
+            
+            // Lấy màu cho priority
+            const priorityColors = {
+                high: 'border-l-red-400 bg-red-50/50',
+                medium: 'border-l-yellow-400 bg-yellow-50/50',
+                low: 'border-l-green-400 bg-green-50/50'
+            };
+            
+            const priorityIcons = {
+                high: '🔴',
+                medium: '🟡',
+                low: '🟢'
+            };
+            
+            const taskItem = document.createElement('li');
+            taskItem.className = `flex items-center gap-3 p-3 bg-white/50 rounded-lg border-l-4 ${priorityColors[priority]} hover:bg-white/70 transition-colors duration-200`;
+            taskItem.id = `task-${currentTaskId}`;
+            taskItem.dataset.priority = priority;
+            
+            taskItem.innerHTML = `
+                <input 
+                    type="checkbox" 
+                    class="custom-checkbox" 
+                    id="checkbox-${currentTaskId}"
+                    onchange="toggleTask(${currentTaskId}, '${period}')"
+                >
+                <div class="flex-1">
+                    <label for="checkbox-${currentTaskId}" class="cursor-pointer text-gray-700 block font-medium" id="label-${currentTaskId}">
+                        ${taskText}
+                    </label>
+                    <div class="flex items-center gap-3 text-sm text-gray-500 mt-1 flex-wrap">
+                        <span>🕐 ${taskTime}</span>
+                        <span>📅 ${dayOptions[taskDay]}</span>
+                        <span>${categoryOptions[category]}</span>
+                        <span>${priorityIcons[priority]} ${priority === 'high' ? 'Làm ngay nhé' : priority === 'medium' ? 'Làm sớm nha' : 'Cứ chill thôi'}</span>
                     </div>
-                `;
-            });
+                </div>
+                <button 
+                    onclick="deleteTask(${currentTaskId}, '${period}')"
+                    class="text-red-400 hover:text-red-600 transition-colors duration-200 p-1"
+                    title="Xóa công việc"
+                >
+                    🗑️
+                </button>
+            `;
             
-            // Khởi tạo các ô ghi chú
-            const noteCells = document.querySelectorAll('.note-cell');
-            noteCells.forEach(cell => {
-                const note = cell.dataset.note;
-                const day = cell.dataset.day;
-                
-                cell.innerHTML = `
-                    <div class="space-y-1">
-                        <textarea placeholder="Ghi chú..." 
-                                  class="w-full p-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
-                                  rows="2"
-                                  data-field="note"
-                                  id="note-${note}-${day}"
-                                  onchange="updateNoteDisplay(this)"></textarea>
-                        <div class="note-items" id="items-${note}-${day}"></div>
-                    </div>
-                `;
-            });
+            taskList.appendChild(taskItem);
+            input.value = '';
             
-            // Tải dữ liệu đã lưu
-            loadSchedule();
+            // Sắp xếp lại theo độ ưu tiên
+            sortTasksByPriority(period);
+            updateStats();
         }
-
-        // Lưu thời khóa biểu
-        function saveSchedule() {
-            const scheduleData = {};
-            
-            // Lưu dữ liệu các tiết học
-            const cells = document.querySelectorAll('.schedule-cell');
-            cells.forEach(cell => {
-                const period = cell.dataset.period;
-                const day = cell.dataset.day;
-                const key = `${period}-${day}`;
-                
-                const subject = cell.querySelector('[data-field="subject"]').value;
-                const teacher = cell.querySelector('[data-field="teacher"]').value;
-                const location = cell.querySelector('[data-field="location"]').value;
-                
-                scheduleData[key] = {
-                    subject: subject,
-                    teacher: teacher,
-                    location: location
-                };
-            });
-            
-            // Lưu dữ liệu ghi chú
-            const noteCells = document.querySelectorAll('.note-cell');
-            noteCells.forEach(cell => {
-                const note = cell.dataset.note;
-                const day = cell.dataset.day;
-                const key = `${note}-${day}`;
-                
-                const noteText = cell.querySelector('[data-field="note"]').value;
-                
-                scheduleData[key] = {
-                    note: noteText
-                };
-            });
-            
-            // Lưu thời gian tùy chỉnh cho buổi tối
-            const timeCells = document.querySelectorAll('.time-cell');
-            timeCells.forEach(cell => {
-                const period = cell.dataset.period;
-                const timeInput = cell.querySelector('[data-field="time"]');
-                if (timeInput) {
-                    scheduleData[`time-${period}`] = {
-                        time: timeInput.value
-                    };
-                }
-            });
-            
-            localStorage.setItem('scheduleData', JSON.stringify(scheduleData));
-            showNotification('Đã lưu! ✨');
-        }
-
-        // Tải thời khóa biểu đã lưu
-        function loadSchedule() {
-            const savedData = localStorage.getItem('scheduleData');
-            if (savedData) {
-                const scheduleData = JSON.parse(savedData);
-                
-                Object.keys(scheduleData).forEach(key => {
-                    const data = scheduleData[key];
-                    
-                    if (key.includes('note-')) {
-                        // Tải ghi chú
-                        const noteInput = document.getElementById(key);
-                        if (noteInput) {
-                            noteInput.value = data.note || '';
-                            updateNoteDisplay(noteInput);
-                        }
-                    } else if (key.startsWith('time-')) {
-                        // Tải thời gian tùy chỉnh
-                        const timeInput = document.getElementById(key);
-                        if (timeInput) {
-                            timeInput.value = data.time || '';
-                        }
-                    } else {
-                        // Tải dữ liệu tiết học
-                        const [period, day] = key.split('-');
-                        
-                        const subjectInput = document.getElementById(`subject-${period}-${day}`);
-                        const teacherInput = document.getElementById(`teacher-${period}-${day}`);
-                        const locationInput = document.getElementById(`location-${period}-${day}`);
-                        
-                        if (subjectInput) subjectInput.value = data.subject || '';
-                        if (teacherInput) teacherInput.value = data.teacher || '';
-                        if (locationInput) locationInput.value = data.location || '';
-                    }
-                });
-            }
-        }
-
-        // Xóa tất cả dữ liệu
-        function clearSchedule() {
-            const inputs = document.querySelectorAll('.schedule-cell input, .note-cell textarea');
-            inputs.forEach(input => {
-                input.value = '';
-                if (input.dataset.field === 'note') {
-                    updateNoteDisplay(input);
-                }
-            });
-            
-            // Xóa tất cả dữ liệu trong localStorage
-            const keys = Object.keys(localStorage);
-            keys.forEach(key => {
-                if (key.startsWith('scheduleData') || key.startsWith('checkbox-')) {
-                    localStorage.removeItem(key);
-                }
-            });
-            
-            showNotification('Đã xóa! 🗑️');
-        }
-
-        // Hiển thị thông báo
-        function showNotification(message) {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.classList.remove('hidden');
-            
-            setTimeout(() => {
-                notification.classList.add('hidden');
-            }, 2000);
-        }
-
-        // Cập nhật hiển thị ghi chú với checkbox
-        function updateNoteDisplay(textarea) {
-            const noteId = textarea.id;
-            const itemsContainer = document.getElementById(noteId.replace('note-', 'items-'));
-            const noteText = textarea.value;
-            
-            // Xóa nội dung cũ
-            itemsContainer.innerHTML = '';
-            
-            if (noteText.trim()) {
-                // Tách các dòng ghi chú
-                const lines = noteText.split('\n').filter(line => line.trim());
-                
-                lines.forEach((line, index) => {
-                    const itemId = `${noteId}-item-${index}`;
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'flex items-center space-x-1 text-xs';
-                    itemDiv.innerHTML = `
-                        <input type="checkbox" 
-                               id="${itemId}" 
-                               class="w-3 h-3 text-green-400 bg-white border-gray-300 rounded focus:ring-green-300 focus:ring-1"
-                               onchange="toggleNoteItem(this)"
-                               data-note-id="${noteId}">
-                        <label for="${itemId}" 
-                               class="flex-1 cursor-pointer transition-all duration-200" 
-                               id="label-${itemId}">${line.trim()}</label>
-                    `;
-                    itemsContainer.appendChild(itemDiv);
-                });
-            }
-            
-            // Tải trạng thái checkbox đã lưu
-            loadCheckboxStates(noteId);
-        }
-
-        // Xử lý khi tick/untick checkbox
-        function toggleNoteItem(checkbox) {
-            const label = document.getElementById(`label-${checkbox.id}`);
-            const noteId = checkbox.dataset.noteId;
+        
+        function toggleTask(taskId, period) {
+            const checkbox = document.getElementById(`checkbox-${taskId}`);
+            const label = document.getElementById(`label-${taskId}`);
             
             if (checkbox.checked) {
-                label.classList.add('line-through', 'text-gray-400', 'opacity-60');
-                label.innerHTML = '✅ ' + label.textContent.replace('✅ ', '');
+                label.classList.add('completed-task');
             } else {
-                label.classList.remove('line-through', 'text-gray-400', 'opacity-60');
-                label.innerHTML = label.textContent.replace('✅ ', '');
+                label.classList.remove('completed-task');
             }
             
-            // Lưu trạng thái checkbox
-            saveCheckboxStates(noteId);
+            updateStats();
         }
-
-        // Lưu trạng thái checkbox
-        function saveCheckboxStates(noteId) {
-            const checkboxes = document.querySelectorAll(`input[data-note-id="${noteId}"]`);
-            const states = {};
+        
+        function deleteTask(taskId, period) {
+            const taskItem = document.getElementById(`task-${taskId}`);
+            taskItem.remove();
+            updateStats();
+        }
+        
+        function sortTasksByPriority(period) {
+            const taskList = document.getElementById(`${period}-tasks`);
+            const tasks = Array.from(taskList.children);
             
-            checkboxes.forEach((checkbox, index) => {
-                states[index] = checkbox.checked;
+            const priorityOrder = { high: 0, medium: 1, low: 2 };
+            
+            tasks.sort((a, b) => {
+                const aPriority = a.dataset.priority;
+                const bPriority = b.dataset.priority;
+                return priorityOrder[aPriority] - priorityOrder[bPriority];
             });
             
-            localStorage.setItem(`checkbox-${noteId}`, JSON.stringify(states));
+            // Xóa tất cả và thêm lại theo thứ tự mới
+            taskList.innerHTML = '';
+            tasks.forEach(task => taskList.appendChild(task));
         }
-
-        // Tải trạng thái checkbox đã lưu
-        function loadCheckboxStates(noteId) {
-            const savedStates = localStorage.getItem(`checkbox-${noteId}`);
-            if (savedStates) {
-                const states = JSON.parse(savedStates);
-                const checkboxes = document.querySelectorAll(`input[data-note-id="${noteId}"]`);
-                
-                checkboxes.forEach((checkbox, index) => {
-                    if (states[index]) {
-                        checkbox.checked = true;
-                        toggleNoteItem(checkbox);
-                    }
-                });
-            }
-        }
-
-        // Tự động lưu khi người dùng nhập
-        function setupAutoSave() {
-            document.addEventListener('input', function(e) {
-                if (e.target.matches('.schedule-cell input') || e.target.matches('.note-cell textarea') || e.target.matches('.time-cell input')) {
-                    // Debounce auto-save
-                    clearTimeout(window.autoSaveTimeout);
-                    window.autoSaveTimeout = setTimeout(() => {
-                        saveSchedule();
-                    }, 1000);
-                }
-            });
+        
+        function updateStats() {
+            const morningTasks = document.querySelectorAll('#morning-tasks li');
+            const afternoonTasks = document.querySelectorAll('#afternoon-tasks li');
             
-            // Xử lý phím Enter để chuyển sang ô tiếp theo
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    const target = e.target;
-                    
-                    // Chỉ áp dụng cho input trong schedule-cell và time-cell, không áp dụng cho textarea
-                    if (target.matches('.schedule-cell input') || target.matches('.time-cell input')) {
-                        e.preventDefault();
-                        
-                        // Tìm ô input tiếp theo
-                        const allInputs = Array.from(document.querySelectorAll('.schedule-cell input, .time-cell input'));
-                        const currentIndex = allInputs.indexOf(target);
-                        
-                        if (currentIndex >= 0 && currentIndex < allInputs.length - 1) {
-                            allInputs[currentIndex + 1].focus();
-                        }
-                    }
-                }
-            });
+            const morningCompleted = document.querySelectorAll('#morning-tasks input[type="checkbox"]:checked').length;
+            const afternoonCompleted = document.querySelectorAll('#afternoon-tasks input[type="checkbox"]:checked').length;
+            
+            document.getElementById('morning-total').textContent = morningTasks.length;
+            document.getElementById('morning-completed').textContent = morningCompleted;
+            document.getElementById('afternoon-total').textContent = afternoonTasks.length;
+            document.getElementById('afternoon-completed').textContent = afternoonCompleted;
         }
-
-        // Tải file Excel mẫu
+        
         function downloadTemplate() {
-            // Tạo dữ liệu mẫu cho Excel
+            // Tạo dữ liệu mẫu
             const templateData = [
-                ['Thời khóa biểu - File mẫu', '', '', '', '', '', ''],
-                ['', '', '', '', '', '', ''],
-                ['Thời gian', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'],
-                ['', '', '', '', '', '', ''],
-                ['BUỔI SÁNG', '', '', '', '', '', ''],
-                ['Tiết 1 (7:00-7:45)', '', '', '', '', '', ''],
-                ['- Môn học', 'Toán', 'Văn', 'Anh', 'Lý', 'Hóa', 'Sinh'],
-                ['- Giáo viên', 'Cô Lan', 'Thầy Nam', 'Cô Hoa', 'Thầy Minh', 'Cô Mai', 'Thầy Đức'],
-                ['- Phòng học', 'A101', 'A102', 'A103', 'A104', 'A105', 'A106'],
-                ['- Ghi chú', 'Mang máy tính', 'Nộp bài tập', '', 'Thí nghiệm', '', ''],
-                ['', '', '', '', '', '', ''],
-                ['Tiết 2 (7:45-8:30)', '', '', '', '', '', ''],
-                ['- Môn học', '', '', '', '', '', ''],
-                ['- Giáo viên', '', '', '', '', '', ''],
-                ['- Phòng học', '', '', '', '', '', ''],
-                ['- Ghi chú', '', '', '', '', '', ''],
-                ['', '', '', '', '', '', ''],
-                ['Ra chơi (8:30-9:00)', '', '', '', '', '', ''],
-                ['', '', '', '', '', '', ''],
-                ['Tiết 3 (9:00-9:45)', '', '', '', '', '', ''],
-                ['- Môn học', '', '', '', '', '', ''],
-                ['- Giáo viên', '', '', '', '', '', ''],
-                ['- Phòng học', '', '', '', '', '', ''],
-                ['- Ghi chú', '', '', '', '', '', ''],
-                ['', '', '', '', '', '', ''],
-                ['Tiết 4 (9:45-10:30)', '', '', '', '', '', ''],
-                ['- Môn học', '', '', '', '', '', ''],
-                ['- Giáo viên', '', '', '', '', '', ''],
-                ['- Phòng học', '', '', '', '', '', ''],
-                ['- Ghi chú', '', '', '', '', '', ''],
-                ['', '', '', '', '', '', ''],
-                ['Tiết 5 (10:30-11:15)', '', '', '', '', '', ''],
-                ['- Môn học', '', '', '', '', '', ''],
-                ['- Giáo viên', '', '', '', '', '', ''],
-                ['- Phòng học', '', '', '', '', '', ''],
-                ['- Ghi chú', '', '', '', '', '', ''],
-                ['', '', '', '', '', '', ''],
-                ['BUỔI CHIỀU', '', '', '', '', '', ''],
-                ['Tiết 1 (13:00-13:45)', '', '', '', '', '', ''],
-                ['- Môn học', '', '', '', '', '', ''],
-                ['- Giáo viên', '', '', '', '', '', ''],
-                ['- Phòng học', '', '', '', '', '', ''],
-                ['- Ghi chú', '', '', '', '', '', ''],
-                ['', '', '', '', '', '', ''],
-                ['Tiết 2 (13:45-14:30)', '', '', '', '', '', ''],
-                ['- Môn học', '', '', '', '', '', ''],
-                ['- Giáo viên', '', '', '', '', '', ''],
-                ['- Phòng học', '', '', '', '', '', ''],
-                ['- Ghi chú', '', '', '', '', '', ''],
-                ['', '', '', '', '', '', ''],
-                ['Tiết 3 (14:30-15:15)', '', '', '', '', '', ''],
-                ['- Môn học', '', '', '', '', '', ''],
-                ['- Giáo viên', '', '', '', '', '', ''],
-                ['- Phòng học', '', '', '', '', '', ''],
-                ['- Ghi chú', '', '', '', '', '', ''],
-                ['', '', '', '', '', '', ''],
-                ['Ra chơi (15:15-15:45)', '', '', '', '', '', ''],
-                ['', '', '', '', '', '', ''],
-                ['Tiết 4 (15:45-16:30)', '', '', '', '', '', ''],
-                ['- Môn học', '', '', '', '', '', ''],
-                ['- Giáo viên', '', '', '', '', '', ''],
-                ['- Phòng học', '', '', '', '', '', ''],
-                ['- Ghi chú', '', '', '', '', '', ''],
-                ['', '', '', '', '', '', ''],
-                ['Tiết 5 (16:30-17:15)', '', '', '', '', '', ''],
-                ['- Môn học', '', '', '', '', '', ''],
-                ['- Giáo viên', '', '', '', '', '', ''],
-                ['- Phòng học', '', '', '', '', '', ''],
-                ['- Ghi chú', '', '', '', '', '', ''],
-                ['', '', '', '', '', '', ''],
-
-                ['', '', '', '', '', '', ''],
-                ['HƯỚNG DẪN SỬ DỤNG:', '', '', '', '', '', ''],
-                ['1. Điền thông tin vào các ô tương ứng', '', '', '', '', '', ''],
-                ['2. Lưu file Excel', '', '', '', '', '', ''],
-                ['3. Tải file lên bằng nút "Tải Excel lên"', '', '', '', '', '', ''],
-                ['4. Dữ liệu sẽ tự động điền vào thời khóa biểu', '', '', '', '', '', '']
+                {
+                    'Buổi': 'Sáng',
+                    'Công việc': 'Họp team standup',
+                    'Giờ': '09:00',
+                    'Ngày': 'Thứ 2',
+                    'Loại': 'Công việc',
+                    'Độ ưu tiên': 'Làm ngay nhé',
+                    'Hoàn thành': 'Chưa'
+                },
+                {
+                    'Buổi': 'Sáng',
+                    'Công việc': 'Đọc sách 30 phút',
+                    'Giờ': '07:30',
+                    'Ngày': 'Thứ 2',
+                    'Loại': 'Học tập',
+                    'Độ ưu tiên': 'Làm sớm nha',
+                    'Hoàn thành': 'Chưa'
+                },
+                {
+                    'Buổi': 'Chiều',
+                    'Công việc': 'Tập thể dục',
+                    'Giờ': '17:00',
+                    'Ngày': 'Thứ 2',
+                    'Loại': 'Sức khỏe',
+                    'Độ ưu tiên': 'Cứ chill thôi',
+                    'Hoàn thành': 'Chưa'
+                },
+                {
+                    'Buổi': 'Chiều',
+                    'Công việc': 'Nấu ăn tối',
+                    'Giờ': '18:30',
+                    'Ngày': 'Thứ 2',
+                    'Loại': 'Cá nhân',
+                    'Độ ưu tiên': 'Làm sớm nha',
+                    'Hoàn thành': 'Chưa'
+                }
             ];
-
+            
             // Tạo workbook và worksheet
             const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet(templateData);
-
-            // Định dạng cột
-            ws['!cols'] = [
-                { wch: 25 }, // Cột thời gian
-                { wch: 15 }, // Thứ 2
-                { wch: 15 }, // Thứ 3
-                { wch: 15 }, // Thứ 4
-                { wch: 15 }, // Thứ 5
-                { wch: 15 }, // Thứ 6
-                { wch: 15 }  // Thứ 7
-            ];
-
+            const ws = XLSX.utils.json_to_sheet(templateData);
+            
             // Thêm worksheet vào workbook
-            XLSX.utils.book_append_sheet(wb, ws, 'Thời khóa biểu');
-
-            // Tải xuống file
-            XLSX.writeFile(wb, `mau-thoi-khoa-bieu-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
-            showNotification('Đã tải file mẫu Excel! 📋');
+            XLSX.utils.book_append_sheet(wb, ws, 'Mẫu công việc');
+            
+            // Xuất file mẫu
+            XLSX.writeFile(wb, 'Mau-danh-sach-cong-viec.xlsx');
+            
+            showNotification('Đã tải xuống file mẫu Excel!', 'success');
         }
-
-        // Nhập dữ liệu từ file Excel
-        function importFromExcel(event) {
+        
+        function exportExcel() {
+            const data = [];
+            
+            // Lấy dữ liệu từ buổi sáng
+            const morningTasks = document.querySelectorAll('#morning-tasks li');
+            morningTasks.forEach(task => {
+                const checkbox = task.querySelector('input[type="checkbox"]');
+                const label = task.querySelector('label');
+                const details = task.querySelector('.text-sm').textContent;
+                
+                // Tách thông tin từ details
+                const timeMatch = details.match(/🕐 (\d{2}:\d{2})/);
+                const dayMatch = details.match(/📅 ([^💼📚💪🏠]+)/);
+                const categoryMatch = details.match(/(💼|📚|💪|🏠) ([^🔴🟡🟢]+)/);
+                const priorityMatch = details.match(/(🔴|🟡|🟢) (.+)/);
+                
+                data.push({
+                    'Buổi': 'Sáng',
+                    'Công việc': label.textContent,
+                    'Giờ': timeMatch ? timeMatch[1] : '',
+                    'Ngày': dayMatch ? dayMatch[1].trim() : '',
+                    'Loại': categoryMatch ? categoryMatch[2].trim() : '',
+                    'Độ ưu tiên': priorityMatch ? priorityMatch[2].trim() : '',
+                    'Hoàn thành': checkbox.checked ? 'Có' : 'Chưa'
+                });
+            });
+            
+            // Lấy dữ liệu từ buổi chiều
+            const afternoonTasks = document.querySelectorAll('#afternoon-tasks li');
+            afternoonTasks.forEach(task => {
+                const checkbox = task.querySelector('input[type="checkbox"]');
+                const label = task.querySelector('label');
+                const details = task.querySelector('.text-sm').textContent;
+                
+                // Tách thông tin từ details
+                const timeMatch = details.match(/🕐 (\d{2}:\d{2})/);
+                const dayMatch = details.match(/📅 ([^💼📚💪🏠]+)/);
+                const categoryMatch = details.match(/(💼|📚|💪|🏠) ([^🔴🟡🟢]+)/);
+                const priorityMatch = details.match(/(🔴|🟡|🟢) (.+)/);
+                
+                data.push({
+                    'Buổi': 'Chiều',
+                    'Công việc': label.textContent,
+                    'Giờ': timeMatch ? timeMatch[1] : '',
+                    'Ngày': dayMatch ? dayMatch[1].trim() : '',
+                    'Loại': categoryMatch ? categoryMatch[2].trim() : '',
+                    'Độ ưu tiên': priorityMatch ? priorityMatch[2].trim() : '',
+                    'Hoàn thành': checkbox.checked ? 'Có' : 'Chưa'
+                });
+            });
+            
+            if (data.length === 0) {
+                showNotification('Không có dữ liệu để xuất!', 'warning');
+                return;
+            }
+            
+            // Tạo workbook và worksheet
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(data);
+            
+            // Thêm worksheet vào workbook
+            XLSX.utils.book_append_sheet(wb, ws, 'Danh sách công việc');
+            
+            // Xuất file
+            const today = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `Danh-sach-cong-viec-${today}.xlsx`);
+            
+            showNotification('Đã xuất file Excel thành công!', 'success');
+        }
+        
+        function importExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
-
+            
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
-                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                    // Xử lý dữ liệu và điền vào form
-                    processExcelData(jsonData);
-                    showNotification('Đã nhập dữ liệu từ Excel! 📂');
-                } catch (error) {
-                    console.error('Lỗi khi đọc file Excel:', error);
-                    showNotification('Lỗi đọc file Excel! ❌');
-                }
-            };
-            reader.readAsArrayBuffer(file);
-            
-            // Reset input để có thể tải cùng file nhiều lần
-            event.target.value = '';
-        }
-
-        // Xử lý dữ liệu Excel và điền vào form
-        function processExcelData(data) {
-            const periods = [
-                'morning-1', 'morning-2', 'morning-3', 'morning-4', 'morning-5',
-                'afternoon-1', 'afternoon-2', 'afternoon-3', 'afternoon-4', 'afternoon-5'
-            ];
-            
-            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            
-            // Tìm và điền dữ liệu cho từng tiết học
-            for (let i = 0; i < data.length; i++) {
-                const row = data[i];
-                if (!row || !row[0]) continue;
-                
-                const timeCell = row[0].toString().toLowerCase();
-                
-                // Xác định tiết học dựa trên nội dung ô đầu tiên
-                let currentPeriod = null;
-                
-                if (timeCell.includes('tiết 1') && timeCell.includes('7:00')) {
-                    currentPeriod = 'morning-1';
-                } else if (timeCell.includes('tiết 2') && timeCell.includes('7:45')) {
-                    currentPeriod = 'morning-2';
-                } else if (timeCell.includes('tiết 3') && timeCell.includes('9:00')) {
-                    currentPeriod = 'morning-3';
-                } else if (timeCell.includes('tiết 4') && timeCell.includes('9:45')) {
-                    currentPeriod = 'morning-4';
-                } else if (timeCell.includes('tiết 5') && timeCell.includes('10:30')) {
-                    currentPeriod = 'morning-5';
-                } else if (timeCell.includes('tiết 1') && timeCell.includes('13:00')) {
-                    currentPeriod = 'afternoon-1';
-                } else if (timeCell.includes('tiết 2') && timeCell.includes('13:45')) {
-                    currentPeriod = 'afternoon-2';
-                } else if (timeCell.includes('tiết 3') && timeCell.includes('14:30')) {
-                    currentPeriod = 'afternoon-3';
-                } else if (timeCell.includes('tiết 4') && timeCell.includes('15:45')) {
-                    currentPeriod = 'afternoon-4';
-                } else if (timeCell.includes('tiết 5') && timeCell.includes('16:30')) {
-                    currentPeriod = 'afternoon-5';
-
-                }
-                
-                if (currentPeriod) {
-                    // Điền dữ liệu cho tiết học này
-                    fillPeriodData(data, i, currentPeriod, days);
-                }
-            }
-            
-            // Lưu dữ liệu sau khi nhập
-            saveSchedule();
-        }
-
-        // Điền dữ liệu cho một tiết học cụ thể
-        function fillPeriodData(data, startRow, period, days) {
-            const fieldMap = {
-                'môn học': 'subject',
-                'giáo viên': 'teacher',
-                'phòng học': 'location',
-                'địa chỉ nơi học': 'location',
-                'ghi chú': 'note'
-            };
-            
-            // Duyệt qua 5 dòng tiếp theo để tìm dữ liệu
-            for (let i = startRow + 1; i < Math.min(startRow + 6, data.length); i++) {
-                const row = data[i];
-                if (!row || !row[0]) continue;
-                
-                const fieldName = row[0].toString().toLowerCase().replace('- ', '');
-                const fieldType = fieldMap[fieldName];
-                
-                if (fieldType) {
-                    // Điền dữ liệu cho từng ngày trong tuần
-                    days.forEach((day, dayIndex) => {
-                        const cellValue = row[dayIndex + 1] || '';
-                        
-                        if (fieldType === 'note') {
-                            // Xử lý ghi chú
-                            const noteId = `note-note-after-${period}-${day}`;
-                            const noteInput = document.getElementById(noteId);
-                            if (noteInput && cellValue) {
-                                noteInput.value = cellValue.toString();
-                                updateNoteDisplay(noteInput);
-                            }
-                        } else {
-                            // Xử lý môn học, giáo viên, phòng học
-                            const inputId = `${fieldType}-${period}-${day}`;
-                            const input = document.getElementById(inputId);
-                            if (input && cellValue) {
-                                input.value = cellValue.toString();
-                            }
+                    
+                    // Lấy sheet đầu tiên
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    
+                    // Chuyển đổi thành JSON
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    // Xóa tất cả task hiện tại
+                    document.getElementById('morning-tasks').innerHTML = '';
+                    document.getElementById('afternoon-tasks').innerHTML = '';
+                    taskId = 0;
+                    
+                    // Thêm từng task từ Excel
+                    jsonData.forEach(row => {
+                        if (row['Công việc']) {
+                            importTaskFromExcel(row);
                         }
                     });
+                    
+                    updateStats();
+                    showNotification(`Đã tải lên và nhập ${jsonData.length} công việc từ Excel!`, 'success');
+                    
+                } catch (error) {
+                    showNotification('Lỗi khi đọc file Excel. Vui lòng kiểm tra định dạng file!', 'error');
                 }
-            }
+            };
+            
+            reader.readAsArrayBuffer(file);
+            event.target.value = ''; // Reset input
         }
-
-        // Xuất dữ liệu ra file Excel
-        function exportToExcel() {
-            const periods = [
-                { id: 'morning-1', name: 'Tiết 1 (7:00-7:45)', session: 'BUỔI SÁNG' },
-                { id: 'morning-2', name: 'Tiết 2 (7:45-8:30)', session: '' },
-                { id: 'morning-3', name: 'Tiết 3 (9:00-9:45)', session: '' },
-                { id: 'morning-4', name: 'Tiết 4 (9:45-10:30)', session: '' },
-                { id: 'morning-5', name: 'Tiết 5 (10:30-11:15)', session: '' },
-                { id: 'afternoon-1', name: 'Tiết 1 (13:00-13:45)', session: 'BUỔI CHIỀU' },
-                { id: 'afternoon-2', name: 'Tiết 2 (13:45-14:30)', session: '' },
-                { id: 'afternoon-3', name: 'Tiết 3 (14:30-15:15)', session: '' },
-                { id: 'afternoon-4', name: 'Tiết 4 (15:45-16:30)', session: '' },
-                { id: 'afternoon-5', name: 'Tiết 5 (16:30-17:15)', session: '' }
-            ];
+        
+        function importTaskFromExcel(row) {
+            const period = row['Buổi'] === 'Chiều' ? 'afternoon' : 'morning';
+            const taskText = row['Công việc'] || '';
+            const taskTime = row['Giờ'] || '08:00';
+            const taskDay = convertDayToValue(row['Ngày'] || 'Thứ 2');
+            const category = convertCategoryToValue(row['Loại'] || 'Công việc');
+            const priority = convertPriorityToValue(row['Độ ưu tiên'] || 'Làm sớm nha');
+            const isCompleted = row['Hoàn thành'] === 'Có';
             
-            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            const dayNames = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+            if (!taskText.trim()) return;
             
-            const exportData = [];
+            const taskList = document.getElementById(`${period}-tasks`);
+            const currentTaskId = ++taskId;
+            
+            // Lấy icon và text cho category
+            const categoryOptions = {
+                work: '💼 Công việc',
+                study: '📚 Học tập',
+                health: '💪 Sức khỏe',
+                personal: '🏠 Cá nhân'
+            };
+            
+            // Lấy text cho ngày
+            const dayOptions = {
+                monday: 'Thứ 2',
+                tuesday: 'Thứ 3',
+                wednesday: 'Thứ 4',
+                thursday: 'Thứ 5',
+                friday: 'Thứ 6',
+                saturday: 'Thứ 7',
+                sunday: 'Chủ nhật'
+            };
+            
+            // Lấy màu cho priority
+            const priorityColors = {
+                high: 'border-l-red-400 bg-red-50/50',
+                medium: 'border-l-yellow-400 bg-yellow-50/50',
+                low: 'border-l-green-400 bg-green-50/50'
+            };
+            
+            const priorityIcons = {
+                high: '🔴',
+                medium: '🟡',
+                low: '🟢'
+            };
+            
+            const taskItem = document.createElement('li');
+            taskItem.className = `flex items-center gap-3 p-3 bg-white/50 rounded-lg border-l-4 ${priorityColors[priority]} hover:bg-white/70 transition-colors duration-200`;
+            taskItem.id = `task-${currentTaskId}`;
+            taskItem.dataset.priority = priority;
+            
+            taskItem.innerHTML = `
+                <input 
+                    type="checkbox" 
+                    class="custom-checkbox" 
+                    id="checkbox-${currentTaskId}"
+                    onchange="toggleTask(${currentTaskId}, '${period}')"
+                    ${isCompleted ? 'checked' : ''}
+                >
+                <div class="flex-1">
+                    <label for="checkbox-${currentTaskId}" class="cursor-pointer text-gray-700 block font-medium ${isCompleted ? 'completed-task' : ''}" id="label-${currentTaskId}">
+                        ${taskText}
+                    </label>
+                    <div class="flex items-center gap-3 text-sm text-gray-500 mt-1 flex-wrap">
+                        <span>🕐 ${taskTime}</span>
+                        <span>📅 ${dayOptions[taskDay]}</span>
+                        <span>${categoryOptions[category]}</span>
+                        <span>${priorityIcons[priority]} ${priority === 'high' ? 'Làm ngay nhé' : priority === 'medium' ? 'Làm sớm nha' : 'Cứ chill thôi'}</span>
+                    </div>
+                </div>
+                <button 
+                    onclick="deleteTask(${currentTaskId}, '${period}')"
+                    class="text-red-400 hover:text-red-600 transition-colors duration-200 p-1"
+                    title="Xóa công việc"
+                >
+                    🗑️
+                </button>
+            `;
+            
+            taskList.appendChild(taskItem);
+            sortTasksByPriority(period);
+        }
+        
+        function convertDayToValue(dayText) {
+            const dayMap = {
+                'Thứ 2': 'monday',
+                'Thứ 3': 'tuesday', 
+                'Thứ 4': 'wednesday',
+                'Thứ 5': 'thursday',
+                'Thứ 6': 'friday',
+                'Thứ 7': 'saturday',
+                'Chủ nhật': 'sunday'
+            };
+            return dayMap[dayText] || 'monday';
+        }
+        
+        function convertCategoryToValue(categoryText) {
+            const categoryMap = {
+                'Công việc': 'work',
+                'Học tập': 'study',
+                'Sức khỏe': 'health',
+                'Cá nhân': 'personal'
+            };
+            return categoryMap[categoryText] || 'work';
+        }
+        
+        function convertPriorityToValue(priorityText) {
+            const priorityMap = {
+                'Làm ngay nhé': 'high',
+                'Làm sớm nha': 'medium',
+                'Cứ chill thôi': 'low'
+            };
+            return priorityMap[priorityText] || 'medium';
+        }
+        
+        function exportWallpaper() {
+            // Tạo canvas với kích thước điện thoại (9:16)
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Kích thước cho điện thoại (1080x1920)
+            canvas.width = 1080;
+            canvas.height = 1920;
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#fdf2f8'); // pink-50
+            gradient.addColorStop(1, '#eff6ff'); // blue-50
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Thiết lập font
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#374151'; // gray-700
             
             // Tiêu đề
-            exportData.push(['Thời khóa biểu', '', '', '', '', '', '']);
-            exportData.push(['', '', '', '', '', '', '']);
-            exportData.push(['Thời gian', ...dayNames]);
-            exportData.push(['', '', '', '', '', '', '']);
+            ctx.font = 'bold 60px Arial';
+            ctx.fillText('📝 Danh Sách Công Việc', canvas.width / 2, 120);
             
-            periods.forEach(period => {
-                // Thêm tiêu đề buổi học nếu có
-                if (period.session) {
-                    exportData.push([period.session, '', '', '', '', '', '']);
+            // Ngày hiện tại
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('vi-VN', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            ctx.font = '36px Arial';
+            ctx.fillStyle = '#6b7280'; // gray-500
+            ctx.fillText(dateStr, canvas.width / 2, 180);
+            
+            let yPos = 280;
+            
+            // Vẽ phần buổi sáng
+            ctx.fillStyle = '#059669'; // emerald-600
+            ctx.font = 'bold 48px Arial';
+            ctx.fillText('🌅 Buổi Sáng', canvas.width / 2, yPos);
+            yPos += 80;
+            
+            const morningTasks = document.querySelectorAll('#morning-tasks li');
+            morningTasks.forEach((task, index) => {
+                if (yPos > canvas.height - 200) return; // Tránh vượt quá canvas
+                
+                const checkbox = task.querySelector('input[type="checkbox"]');
+                const label = task.querySelector('label');
+                const details = task.querySelector('.text-sm').textContent;
+                
+                // Tách thông tin
+                const timeMatch = details.match(/🕐 (\d{2}:\d{2})/);
+                const dayMatch = details.match(/📅 ([^💼📚💪🏠]+)/);
+                const priorityMatch = details.match(/(🔴|🟡|🟢)/);
+                
+                // Màu dựa trên trạng thái
+                ctx.fillStyle = checkbox.checked ? '#9ca3af' : '#374151'; // gray-400 : gray-700
+                ctx.font = '32px Arial';
+                
+                // Vẽ checkbox
+                const checkboxX = 100;
+                const checkboxY = yPos - 25;
+                ctx.strokeStyle = '#d1d5db';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(checkboxX, checkboxY, 30, 30);
+                
+                if (checkbox.checked) {
+                    ctx.fillStyle = '#10b981';
+                    ctx.fillRect(checkboxX + 3, checkboxY + 3, 24, 24);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 24px Arial';
+                    ctx.fillText('✓', checkboxX + 15, checkboxY + 22);
                 }
                 
-                // Thêm tên tiết học
-                exportData.push([period.name, '', '', '', '', '', '']);
+                // Vẽ text công việc
+                ctx.fillStyle = checkbox.checked ? '#9ca3af' : '#374151';
+                ctx.font = checkbox.checked ? '32px Arial' : 'bold 32px Arial';
+                ctx.textAlign = 'left';
                 
-                // Thêm dữ liệu môn học
-                const subjectRow = ['- Môn học'];
-                const teacherRow = ['- Giáo viên'];
-                const locationRow = ['- Phòng học'];
-                const noteRow = ['- Ghi chú'];
+                // Cắt text nếu quá dài
+                let taskText = label.textContent;
+                if (taskText.length > 35) {
+                    taskText = taskText.substring(0, 32) + '...';
+                }
+                ctx.fillText(taskText, 150, yPos);
                 
-                days.forEach(day => {
-                    const subjectInput = document.getElementById(`subject-${period.id}-${day}`);
-                    const teacherInput = document.getElementById(`teacher-${period.id}-${day}`);
-                    const locationInput = document.getElementById(`location-${period.id}-${day}`);
-                    const noteInput = document.getElementById(`note-note-after-${period.id}-${day}`);
-                    
-                    subjectRow.push(subjectInput ? subjectInput.value : '');
-                    teacherRow.push(teacherInput ? teacherInput.value : '');
-                    locationRow.push(locationInput ? locationInput.value : '');
-                    noteRow.push(noteInput ? noteInput.value : '');
-                });
+                // Vẽ thông tin chi tiết
+                ctx.font = '24px Arial';
+                ctx.fillStyle = '#6b7280';
+                const timeText = timeMatch ? timeMatch[1] : '';
+                const dayText = dayMatch ? dayMatch[1].trim() : '';
+                const priorityIcon = priorityMatch ? priorityMatch[1] : '';
                 
-                exportData.push(subjectRow);
-                exportData.push(teacherRow);
-                exportData.push(locationRow);
-                exportData.push(noteRow);
-                exportData.push(['', '', '', '', '', '', '']);
+                ctx.fillText(`${timeText} • ${dayText} ${priorityIcon}`, 150, yPos + 35);
+                
+                yPos += 90;
             });
             
-            // Tạo workbook và worksheet
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet(exportData);
+            // Vẽ phần buổi chiều
+            yPos += 40;
+            ctx.fillStyle = '#7c3aed'; // purple-600
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('🌇 Buổi Chiều', canvas.width / 2, yPos);
+            yPos += 80;
             
-            // Định dạng cột
-            ws['!cols'] = [
-                { wch: 25 }, // Cột thời gian
-                { wch: 15 }, // Thứ 2
-                { wch: 15 }, // Thứ 3
-                { wch: 15 }, // Thứ 4
-                { wch: 15 }, // Thứ 5
-                { wch: 15 }, // Thứ 6
-                { wch: 15 }  // Thứ 7
-            ];
-            
-            // Thêm worksheet vào workbook
-            XLSX.utils.book_append_sheet(wb, ws, 'Thời khóa biểu');
-            
-            // Tải xuống file
-            XLSX.writeFile(wb, `thoi-khoa-bieu-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
-            showNotification('Đã xuất Excel! 📊');
-        }
-
-        // Xuất thời khóa biểu thành hình ảnh
-        function exportAsImage() {
-            // Ẩn các nút điều khiển tạm thời
-            const controlButtons = document.querySelector('.flex.justify-center.gap-3.mb-6.flex-wrap');
-            const notification = document.getElementById('notification');
-            
-            controlButtons.style.display = 'none';
-            notification.classList.add('hidden');
-            
-            // Tạo container tạm thời để xuất hình với kích thước tối ưu cho mobile
-            const tempContainer = document.createElement('div');
-            tempContainer.style.cssText = `
-                position: fixed;
-                top: -10000px;
-                left: 0;
-                width: 375px;
-                background: linear-gradient(135deg, #fef3c7 0%, #fce7f3 50%, #dbeafe 100%);
-                padding: 16px;
-                font-family: system-ui, -apple-system, sans-serif;
-                z-index: -1;
-            `;
-            
-            // Clone nội dung chính
-            const originalTable = document.querySelector('.bg-white.rounded-3xl.shadow-lg');
-            const clonedContent = originalTable.cloneNode(true);
-            
-            // Tối ưu hóa cho mobile
-            clonedContent.style.cssText = `
-                background: white;
-                border-radius: 16px;
-                box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-                overflow: hidden;
-                border: 2px solid #e5e7eb;
-                font-size: 11px;
-            `;
-            
-            // Tối ưu bảng cho mobile
-            const table = clonedContent.querySelector('table');
-            if (table) {
-                table.style.cssText = `
-                    width: 100%;
-                    border-collapse: collapse;
-                    font-size: 10px;
-                `;
+            const afternoonTasks = document.querySelectorAll('#afternoon-tasks li');
+            afternoonTasks.forEach((task, index) => {
+                if (yPos > canvas.height - 200) return; // Tránh vượt quá canvas
                 
-                // Tối ưu header
-                const headerCells = table.querySelectorAll('thead th');
-                headerCells.forEach((cell, index) => {
-                    if (index === 0) {
-                        cell.style.cssText = `
-                            padding: 8px 4px;
-                            font-size: 9px;
-                            font-weight: bold;
-                            text-align: left;
-                            width: 80px;
-                            background: linear-gradient(135deg, #a855f7, #ec4899);
-                            color: white;
-                        `;
-                    } else {
-                        cell.style.cssText = `
-                            padding: 8px 2px;
-                            font-size: 9px;
-                            font-weight: bold;
-                            text-align: center;
-                            width: 42px;
-                            background: linear-gradient(135deg, #a855f7, #ec4899);
-                            color: white;
-                        `;
-                    }
-                });
+                const checkbox = task.querySelector('input[type="checkbox"]');
+                const label = task.querySelector('label');
+                const details = task.querySelector('.text-sm').textContent;
                 
-                // Tối ưu các ô thời gian
-                const timeCells = table.querySelectorAll('tbody td:first-child');
-                timeCells.forEach(cell => {
-                    if (cell.textContent.includes('BUỔI')) {
-                        cell.style.cssText = `
-                            padding: 6px 4px;
-                            text-align: center;
-                            font-weight: bold;
-                            font-size: 9px;
-                            color: #374151;
-                        `;
-                    } else if (cell.textContent.includes('Tiết') || cell.textContent.includes('Ra chơi')) {
-                        cell.style.cssText = `
-                            padding: 6px 4px;
-                            font-weight: bold;
-                            text-align: center;
-                            font-size: 8px;
-                            color: white;
-                            width: 80px;
-                        `;
-                    } else if (cell.textContent.includes('Ghi chú')) {
-                        cell.style.cssText = `
-                            padding: 4px;
-                            text-align: center;
-                            font-size: 7px;
-                            font-weight: 500;
-                            width: 80px;
-                        `;
-                    }
-                });
+                // Tách thông tin
+                const timeMatch = details.match(/🕐 (\d{2}:\d{2})/);
+                const dayMatch = details.match(/📅 ([^💼📚💪🏠]+)/);
+                const priorityMatch = details.match(/(🔴|🟡|🟢)/);
                 
-                // Tối ưu các ô nội dung
-                const contentCells = table.querySelectorAll('tbody td:not(:first-child)');
-                contentCells.forEach(cell => {
-                    const inputs = cell.querySelectorAll('input, textarea');
-                    let cellContent = '';
-                    
-                    inputs.forEach(input => {
-                        if (input.value.trim()) {
-                            if (input.dataset.field === 'subject') {
-                                cellContent += `<div style="font-weight: bold; color: #1f2937; margin-bottom: 2px; font-size: 9px;">${input.value}</div>`;
-                            } else if (input.dataset.field === 'teacher') {
-                                cellContent += `<div style="color: #6b7280; font-size: 8px; margin-bottom: 1px;">${input.value}</div>`;
-                            } else if (input.dataset.field === 'location') {
-                                cellContent += `<div style="color: #9ca3af; font-size: 7px; margin-bottom: 1px;">${input.value}</div>`;
-                            } else if (input.dataset.field === 'note') {
-                                const notes = input.value.split('\n').filter(n => n.trim());
-                                notes.forEach(note => {
-                                    cellContent += `<div style="color: #059669; font-size: 7px; margin-bottom: 1px;">• ${note.trim()}</div>`;
-                                });
-                            }
-                        }
-                    });
-                    
-                    cell.innerHTML = cellContent || '';
-                    cell.style.cssText = `
-                        padding: 4px 2px;
-                        vertical-align: top;
-                        border-bottom: 1px solid #f3f4f6;
-                        width: 42px;
-                        min-height: 35px;
-                        font-size: 8px;
-                        line-height: 1.2;
-                    `;
-                });
+                // Vẽ checkbox
+                const checkboxX = 100;
+                const checkboxY = yPos - 25;
+                ctx.strokeStyle = '#d1d5db';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(checkboxX, checkboxY, 30, 30);
+                
+                if (checkbox.checked) {
+                    ctx.fillStyle = '#10b981';
+                    ctx.fillRect(checkboxX + 3, checkboxY + 3, 24, 24);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('✓', checkboxX + 15, checkboxY + 22);
+                }
+                
+                // Vẽ text công việc
+                ctx.fillStyle = checkbox.checked ? '#9ca3af' : '#374151';
+                ctx.font = checkbox.checked ? '32px Arial' : 'bold 32px Arial';
+                ctx.textAlign = 'left';
+                
+                // Cắt text nếu quá dài
+                let taskText = label.textContent;
+                if (taskText.length > 35) {
+                    taskText = taskText.substring(0, 32) + '...';
+                }
+                ctx.fillText(taskText, 150, yPos);
+                
+                // Vẽ thông tin chi tiết
+                ctx.font = '24px Arial';
+                ctx.fillStyle = '#6b7280';
+                const timeText = timeMatch ? timeMatch[1] : '';
+                const dayText = dayMatch ? dayMatch[1].trim() : '';
+                const priorityIcon = priorityMatch ? priorityMatch[1] : '';
+                
+                ctx.fillText(`${timeText} • ${dayText} ${priorityIcon}`, 150, yPos + 35);
+                
+                yPos += 90;
+            });
+            
+            // Thêm thống kê ở cuối
+            if (yPos < canvas.height - 300) {
+                yPos = canvas.height - 250;
+                
+                ctx.fillStyle = '#374151';
+                ctx.font = 'bold 36px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('📊 Thống Kê', canvas.width / 2, yPos);
+                
+                yPos += 60;
+                
+                const morningTotal = document.getElementById('morning-total').textContent;
+                const morningCompleted = document.getElementById('morning-completed').textContent;
+                const afternoonTotal = document.getElementById('afternoon-total').textContent;
+                const afternoonCompleted = document.getElementById('afternoon-completed').textContent;
+                
+                ctx.font = '28px Arial';
+                ctx.fillStyle = '#059669';
+                ctx.fillText(`Sáng: ${morningCompleted}/${morningTotal} hoàn thành`, canvas.width / 2, yPos);
+                
+                yPos += 40;
+                ctx.fillStyle = '#7c3aed';
+                ctx.fillText(`Chiều: ${afternoonCompleted}/${afternoonTotal} hoàn thành`, canvas.width / 2, yPos);
             }
             
-            // Thêm tiêu đề
-            const header = document.createElement('div');
-            header.style.cssText = `
-                text-align: center;
-                margin-bottom: 12px;
-                padding: 8px;
+            // Tải xuống hình ảnh
+            const link = document.createElement('a');
+            const today2 = new Date().toISOString().split('T')[0];
+            link.download = `todo-wallpaper-${today2}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            
+            showNotification('Đã xuất hình nền điện thoại thành công!', 'success');
+        }
+        
+        function showNotification(message, type) {
+            // Tạo thông báo
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transition-all duration-300 ${
+                type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
+                type === 'error' ? 'bg-red-100 text-red-800 border border-red-200' :
+                'bg-yellow-100 text-yellow-800 border border-yellow-200'
+            }`;
+            
+            notification.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span>${type === 'success' ? '✅' : type === 'error' ? '❌' : '⚠️'}</span>
+                    <span>${message}</span>
+                </div>
             `;
-            header.innerHTML = `
-                <h1 style="font-size: 18px; font-weight: bold; color: #374151; margin: 0 0 4px 0;">📅 Thời Khóa Biểu</h1>
-                <p style="font-size: 12px; color: #6b7280; margin: 0;">Đơn giản & Hiệu quả</p>
-            `;
             
-            tempContainer.appendChild(header);
-            tempContainer.appendChild(clonedContent);
+            document.body.appendChild(notification);
             
-            // Thêm footer với thời gian xuất
-            const footer = document.createElement('div');
-            footer.style.cssText = `
-                text-align: center;
-                margin-top: 12px;
-                padding: 8px;
-                font-size: 10px;
-                color: #9ca3af;
-            `;
-            footer.innerHTML = `Xuất ngày: ${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}`;
-            tempContainer.appendChild(footer);
-            
-            document.body.appendChild(tempContainer);
-            
-            // Đợi một chút để render
+            // Tự động xóa sau 3 giây
             setTimeout(() => {
-                // Cấu hình html2canvas tối ưu cho mobile
-                const options = {
-                    backgroundColor: '#ffffff',
-                    scale: 3, // Tăng độ phân giải cao cho mobile
-                    useCORS: true,
-                    allowTaint: true,
-                    width: 375,
-                    height: tempContainer.scrollHeight,
-                    scrollX: 0,
-                    scrollY: 0,
-                    logging: false,
-                    removeContainer: true
-                };
-                
-                // Chụp ảnh và tải xuống
-                html2canvas(tempContainer, options).then(canvas => {
-                    // Tạo link tải xuống
-                    const link = document.createElement('a');
-                    link.download = `thoi-khoa-bieu-mobile-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.png`;
-                    link.href = canvas.toDataURL('image/png', 0.95);
-                    
-                    // Tự động click để tải xuống
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    
-                    // Dọn dẹp
-                    document.body.removeChild(tempContainer);
-                    controlButtons.style.display = 'flex';
-                    showNotification('Đã xuất hình mobile! 📱');
-                    
-                }).catch(error => {
-                    console.error('Lỗi khi xuất hình ảnh:', error);
-                    document.body.removeChild(tempContainer);
-                    controlButtons.style.display = 'flex';
-                    showNotification('Lỗi xuất hình ảnh! ❌');
-                });
-            }, 100);
-        }
-
-        // Biến lưu trữ màu đã chọn và chế độ chọn màu
-        let selectedColor = null;
-        let colorMode = false;
-
-        // Định nghĩa 6 màu pastel theo yêu cầu
-        const headerColorSchemes = {
-            buttercup: {
-                header: 'background: #fef3c7;',
-                timeCell: 'background: #fefce8;',
-                textColor: '#92400e' // Vàng đậm
-            },
-            softpeach: {
-                header: 'background: #fed7d7;',
-                timeCell: 'background: #fef2f2;',
-                textColor: '#c2410c' // Cam đậm
-            },
-            palepink: {
-                header: 'background: #fce7f3;',
-                timeCell: 'background: #fdf2f8;',
-                textColor: '#be185d' // Hồng đậm
-            },
-            lavender: {
-                header: 'background: #e9d5ff;',
-                timeCell: 'background: #f3e8ff;',
-                textColor: '#6b21a8' // Tím đậm
-            },
-            coolaqua: {
-                header: 'background: #cffafe;',
-                timeCell: 'background: #ecfeff;',
-                textColor: '#155e75' // Xanh cyan đậm
-            },
-            meadowgreen: {
-                header: 'background: #d1fae5;',
-                timeCell: 'background: #ecfdf5;',
-                textColor: '#065f46' // Xanh lá đậm
-            }
-        };
-
-        // Định nghĩa màu sắc cho phần ghi chú
-        const noteColorSchemes = {
-            buttercup: {
-                background: '#fefce8', // Vàng nhạt hơn
-                textColor: '#92400e',
-                borderColor: '#fbbf24'
-            },
-            softpeach: {
-                background: '#fef2f2', // Cam nhạt hơn
-                textColor: '#c2410c',
-                borderColor: '#fb923c'
-            },
-            palepink: {
-                background: '#fdf2f8', // Hồng nhạt hơn
-                textColor: '#be185d',
-                borderColor: '#f472b6'
-            },
-            lavender: {
-                background: '#f3e8ff', // Tím nhạt hơn
-                textColor: '#6b21a8',
-                borderColor: '#a855f7'
-            },
-            coolaqua: {
-                background: '#ecfeff', // Xanh cyan nhạt hơn
-                textColor: '#155e75',
-                borderColor: '#22d3ee'
-            },
-            meadowgreen: {
-                background: '#ecfdf5', // Xanh lá nhạt hơn
-                textColor: '#065f46',
-                borderColor: '#34d399'
-            }
-        };
-
-        // Hiển thị/ẩn bảng chọn màu
-        function toggleColorPalette() {
-            const palette = document.getElementById('colorPalette');
-            if (palette.classList.contains('hidden')) {
-                palette.classList.remove('hidden');
-                palette.style.animation = 'fadeIn 0.3s ease-out';
-            } else {
-                palette.classList.add('hidden');
-            }
-        }
-
-        // Chọn màu
-        function selectColor(color) {
-            selectedColor = color;
-            
-            // Cập nhật hiển thị màu đã chọn
-            const colorInfo = document.getElementById('selectedColorInfo');
-            const colorNames = {
-                'buttercup': 'Buttercup',
-                'softpeach': 'Soft Peach', 
-                'palepink': 'Pale Pink',
-                'lavender': 'Lavender',
-                'coolaqua': 'Cool Aqua',
-                'meadowgreen': 'Meadow Green'
-            };
-            colorInfo.textContent = `Đã chọn màu: ${colorNames[color]}`;
-            
-            // Highlight màu đã chọn
-            document.querySelectorAll('.color-option').forEach(option => {
-                const colorDiv = option.querySelector('div');
-                if (option.dataset.color === color) {
-                    colorDiv.style.transform = 'scale(1.1)';
-                    colorDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
-                } else {
-                    colorDiv.style.transform = 'scale(1)';
-                    colorDiv.style.boxShadow = 'none';
-                }
-            });
-            
-            showNotification(`Đã chọn màu: ${colorNames[color]} 🎨`);
-        }
-
-
-
-        // Áp dụng màu cho header và cột thời gian
-        function applyColorToHeaders() {
-            if (!selectedColor) {
-                showNotification('Vui lòng chọn màu trước! 🎨');
-                return;
-            }
-            
-            const colorScheme = headerColorSchemes[selectedColor];
-            const colorNames = {
-                'buttercup': 'Buttercup',
-                'softpeach': 'Soft Peach', 
-                'palepink': 'Pale Pink',
-                'lavender': 'Lavender',
-                'coolaqua': 'Cool Aqua',
-                'meadowgreen': 'Meadow Green'
-            };
-            
-            if (colorScheme) {
-                // Áp dụng màu cho dòng header chính
-                const headerRow = document.querySelector('thead tr');
-                if (headerRow) {
-                    headerRow.style.cssText = colorScheme.header + ` color: ${colorScheme.textColor}; font-weight: bold;`;
-                }
-                
-                // Áp dụng màu cho tất cả các ô thời gian (cột đầu tiên)
-                const timeCells = document.querySelectorAll('tbody td:first-child');
-                timeCells.forEach(cell => {
-                    if (cell.textContent.includes('Tiết') || cell.textContent.includes('Ra chơi') || cell.classList.contains('time-cell')) {
-                        cell.style.cssText = colorScheme.timeCell + ` color: ${colorScheme.textColor}; padding: 12px; font-weight: bold; text-align: center;`;
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
                     }
-                });
-                
-                // Đặt tất cả ô nội dung về màu trắng
-                const contentCells = document.querySelectorAll('.schedule-cell, .note-cell');
-                contentCells.forEach(cell => {
-                    cell.style.background = 'white';
-                    cell.dataset.cellColor = 'white';
-                });
-                
-                // Lưu màu header đã chọn
-                localStorage.setItem('headerColor', selectedColor);
-                
-                showNotification(`Đã áp dụng màu ${colorNames[selectedColor]} cho tiêu đề! 🎨`);
-            }
+                }, 300);
+            }, 3000);
         }
-
-        // Áp dụng màu cho tất cả phần ghi chú
-        function applyColorToNotes() {
-            if (!selectedColor) {
-                showNotification('Vui lòng chọn màu trước! 🎨');
-                return;
-            }
-            
-            const colorScheme = noteColorSchemes[selectedColor];
-            const colorNames = {
-                'buttercup': 'Buttercup',
-                'softpeach': 'Soft Peach', 
-                'palepink': 'Pale Pink',
-                'lavender': 'Lavender',
-                'coolaqua': 'Cool Aqua',
-                'meadowgreen': 'Meadow Green'
-            };
-            
-            if (colorScheme) {
-                // Áp dụng màu cho tất cả các dòng ghi chú
-                const noteRows = document.querySelectorAll('tr[style*="background"]');
-                noteRows.forEach(row => {
-                    const firstCell = row.querySelector('td:first-child');
-                    if (firstCell && firstCell.textContent.includes('📝 Ghi chú')) {
-                        // Áp dụng màu cho dòng ghi chú
-                        row.style.background = colorScheme.background;
-                        
-                        // Áp dụng màu cho ô đầu tiên (tiêu đề ghi chú)
-                        firstCell.style.cssText = `background: ${colorScheme.background}; color: ${colorScheme.textColor}; padding: 8px; text-align: center; font-size: 12px; font-weight: 500; border: 1px solid ${colorScheme.borderColor};`;
-                        
-                        // Áp dụng màu cho tất cả các ô ghi chú trong dòng này
-                        const noteCells = row.querySelectorAll('.note-cell');
-                        noteCells.forEach(cell => {
-                            cell.style.background = colorScheme.background;
-                            cell.style.border = `1px solid ${colorScheme.borderColor}`;
-                            
-                            // Cập nhật màu cho textarea trong ô ghi chú
-                            const textarea = cell.querySelector('textarea');
-                            if (textarea) {
-                                textarea.style.background = colorScheme.background;
-                                textarea.style.color = colorScheme.textColor;
-                                textarea.style.border = `1px solid ${colorScheme.borderColor}`;
-                            }
-                        });
-                    }
-                });
-                
-                // Lưu màu ghi chú đã chọn
-                localStorage.setItem('noteColor', selectedColor);
-                
-                showNotification(`Đã áp dụng màu ${colorNames[selectedColor]} cho ghi chú! 📝`);
-            }
-        }
-
-        // Reset về màu mặc định (Meadow Green)
-        function resetToDefault() {
-            // Reset header về màu Meadow Green mặc định
-            const headerRow = document.querySelector('thead tr');
-            if (headerRow) {
-                headerRow.style.cssText = 'background: #d1fae5; color: #065f46; font-weight: bold;';
-            }
-            
-            // Reset tất cả ô thời gian về màu Meadow Green nhạt
-            const timeCells = document.querySelectorAll('tbody td:first-child');
-            timeCells.forEach(cell => {
-                if (cell.textContent.includes('Tiết') || cell.classList.contains('time-cell')) {
-                    cell.style.cssText = 'background: #ecfdf5; color: #065f46; padding: 12px; font-weight: bold; text-align: center;';
-                }
-            });
-            
-            // Reset tất cả các dòng ghi chú về màu mặc định
-            const noteRows = document.querySelectorAll('tr[style*="background"]');
-            noteRows.forEach(row => {
-                const firstCell = row.querySelector('td:first-child');
-                if (firstCell && firstCell.textContent.includes('📝 Ghi chú')) {
-                    // Reset màu dòng ghi chú về màu gốc
-                    row.style.cssText = row.style.cssText.replace(/background[^;]*;?/g, '');
-                    
-                    // Reset ô tiêu đề ghi chú
-                    const originalClasses = firstCell.className;
-                    firstCell.style.cssText = '';
-                    firstCell.className = originalClasses;
-                    
-                    // Reset tất cả các ô ghi chú trong dòng này
-                    const noteCells = row.querySelectorAll('.note-cell');
-                    noteCells.forEach(cell => {
-                        cell.style.background = 'white';
-                        cell.style.border = '';
-                        
-                        // Reset textarea trong ô ghi chú
-                        const textarea = cell.querySelector('textarea');
-                        if (textarea) {
-                            textarea.style.background = 'white';
-                            textarea.style.color = '';
-                            textarea.style.border = '1px solid #e5e7eb';
-                        }
-                    });
-                }
-            });
-            
-            // Đặt tất cả ô nội dung về màu trắng
-            const contentCells = document.querySelectorAll('.schedule-cell, .note-cell');
-            contentCells.forEach(cell => {
-                cell.style.background = 'white';
-                cell.dataset.cellColor = 'white';
-            });
-            
-            // Reset chế độ chọn màu
-            selectedColor = null;
-            
-            // Reset hiển thị
-            document.getElementById('selectedColorInfo').textContent = 'Chưa chọn màu nào';
-            document.querySelectorAll('.color-option div').forEach(div => {
-                div.style.transform = 'scale(1)';
-                div.style.boxShadow = 'none';
-            });
-            
-            // Xóa màu đã lưu
-            localStorage.removeItem('headerColor');
-            localStorage.removeItem('noteColor');
-            
-            showNotification('Đã reset về màu mặc định! 🔄');
-        }
-
-        // Khởi tạo các ô nhập liệu
-        function initializeSchedule() {
-            const cells = document.querySelectorAll('.schedule-cell');
-            cells.forEach(cell => {
-                const period = cell.dataset.period;
-                const day = cell.dataset.day;
-                
-                cell.innerHTML = `
-                    <div class="space-y-1">
-                        <input type="text" 
-                               placeholder="Môn học" 
-                               class="w-full p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-transparent bg-white"
-                               data-field="subject"
-                               id="subject-${period}-${day}">
-                        <input type="text" 
-                               placeholder="Giáo viên" 
-                               class="w-full p-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-blue-300 focus:border-transparent bg-gray-50"
-                               data-field="teacher"
-                               id="teacher-${period}-${day}">
-                        <input type="text" 
-                               placeholder="Phòng học" 
-                               class="w-full p-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-blue-300 focus:border-transparent bg-gray-50"
-                               data-field="location"
-                               id="location-${period}-${day}">
-                    </div>
-                `;
-                
-                // Đặt màu nền trắng cho tất cả ô nội dung
-                cell.style.background = 'white';
-            });
-            
-            // Khởi tạo các ô ghi chú
-            const noteCells = document.querySelectorAll('.note-cell');
-            noteCells.forEach(cell => {
-                const note = cell.dataset.note;
-                const day = cell.dataset.day;
-                
-                cell.innerHTML = `
-                    <div class="space-y-1">
-                        <textarea placeholder="Ghi chú..." 
-                                  class="w-full p-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-blue-300 focus:border-transparent bg-white resize-none"
-                                  rows="2"
-                                  data-field="note"
-                                  id="note-${note}-${day}"
-                                  onchange="updateNoteDisplay(this)"></textarea>
-                        <div class="note-items" id="items-${note}-${day}"></div>
-                    </div>
-                `;
-            });
-            
-            // Tải dữ liệu đã lưu
-            loadSchedule();
-        }
-
-        // Lưu thời khóa biểu (cập nhật để lưu màu)
-        function saveSchedule() {
-            const scheduleData = {};
-            
-            // Lưu dữ liệu các tiết học
-            const cells = document.querySelectorAll('.schedule-cell');
-            cells.forEach(cell => {
-                const period = cell.dataset.period;
-                const day = cell.dataset.day;
-                const key = `${period}-${day}`;
-                
-                const subject = cell.querySelector('[data-field="subject"]').value;
-                const teacher = cell.querySelector('[data-field="teacher"]').value;
-                const location = cell.querySelector('[data-field="location"]').value;
-                const cellColor = cell.dataset.cellColor || 'default';
-                
-                scheduleData[key] = {
-                    subject: subject,
-                    teacher: teacher,
-                    location: location,
-                    color: cellColor
-                };
-            });
-            
-            // Lưu dữ liệu ghi chú
-            const noteCells = document.querySelectorAll('.note-cell');
-            noteCells.forEach(cell => {
-                const note = cell.dataset.note;
-                const day = cell.dataset.day;
-                const key = `${note}-${day}`;
-                
-                const noteText = cell.querySelector('[data-field="note"]').value;
-                
-                scheduleData[key] = {
-                    note: noteText
-                };
-            });
-            
-            // Lưu thời gian tùy chỉnh cho buổi tối
-            const timeCells = document.querySelectorAll('.time-cell');
-            timeCells.forEach(cell => {
-                const period = cell.dataset.period;
-                const timeInput = cell.querySelector('[data-field="time"]');
-                if (timeInput) {
-                    scheduleData[`time-${period}`] = {
-                        time: timeInput.value
-                    };
-                }
-            });
-            
-            localStorage.setItem('scheduleData', JSON.stringify(scheduleData));
-            showNotification('Đã lưu! ✨');
-        }
-
-        // Tải thời khóa biểu đã lưu
-        function loadSchedule() {
-            const savedData = localStorage.getItem('scheduleData');
-            if (savedData) {
-                const scheduleData = JSON.parse(savedData);
-                
-                Object.keys(scheduleData).forEach(key => {
-                    const data = scheduleData[key];
-                    
-                    if (key.includes('note-')) {
-                        // Tải ghi chú
-                        const noteInput = document.getElementById(key);
-                        if (noteInput) {
-                            noteInput.value = data.note || '';
-                            updateNoteDisplay(noteInput);
-                        }
-                    } else if (key.startsWith('time-')) {
-                        // Tải thời gian tùy chỉnh
-                        const timeInput = document.getElementById(key);
-                        if (timeInput) {
-                            timeInput.value = data.time || '';
-                        }
-                    } else {
-                        // Tải dữ liệu tiết học
-                        const [period, day] = key.split('-');
-                        
-                        const subjectInput = document.getElementById(`subject-${period}-${day}`);
-                        const teacherInput = document.getElementById(`teacher-${period}-${day}`);
-                        const locationInput = document.getElementById(`location-${period}-${day}`);
-                        
-                        if (subjectInput) subjectInput.value = data.subject || '';
-                        if (teacherInput) teacherInput.value = data.teacher || '';
-                        if (locationInput) locationInput.value = data.location || '';
-                    }
-                });
-            }
-            
-            // Tải màu header đã lưu
-            const savedHeaderColor = localStorage.getItem('headerColor');
-            if (savedHeaderColor) {
-                const colorScheme = headerColorSchemes[savedHeaderColor];
-                if (colorScheme) {
-                    // Áp dụng màu cho header
-                    const headerRow = document.querySelector('thead tr');
-                    if (headerRow) {
-                        headerRow.style.cssText = colorScheme.header + ` color: ${colorScheme.textColor}; font-weight: bold;`;
-                    }
-                    
-                    // Áp dụng màu cho các ô thời gian
-                    const timeCells = document.querySelectorAll('tbody td:first-child');
-                    timeCells.forEach(cell => {
-                        if (cell.textContent.includes('Tiết') || cell.textContent.includes('Ra chơi') || cell.classList.contains('time-cell')) {
-                            cell.style.cssText = colorScheme.timeCell + ` color: ${colorScheme.textColor}; padding: 12px; font-weight: bold; text-align: center;`;
-                        }
-                    });
-                }
-            }
-
-            // Tải màu ghi chú đã lưu
-            const savedNoteColor = localStorage.getItem('noteColor');
-            if (savedNoteColor) {
-                const colorScheme = noteColorSchemes[savedNoteColor];
-                if (colorScheme) {
-                    // Áp dụng màu cho tất cả các dòng ghi chú
-                    const noteRows = document.querySelectorAll('tr[style*="background"]');
-                    noteRows.forEach(row => {
-                        const firstCell = row.querySelector('td:first-child');
-                        if (firstCell && firstCell.textContent.includes('📝 Ghi chú')) {
-                            // Áp dụng màu cho dòng ghi chú
-                            row.style.background = colorScheme.background;
-                            
-                            // Áp dụng màu cho ô đầu tiên (tiêu đề ghi chú)
-                            firstCell.style.cssText = `background: ${colorScheme.background}; color: ${colorScheme.textColor}; padding: 8px; text-align: center; font-size: 12px; font-weight: 500; border: 1px solid ${colorScheme.borderColor};`;
-                            
-                            // Áp dụng màu cho tất cả các ô ghi chú trong dòng này
-                            const noteCells = row.querySelectorAll('.note-cell');
-                            noteCells.forEach(cell => {
-                                cell.style.background = colorScheme.background;
-                                cell.style.border = `1px solid ${colorScheme.borderColor}`;
-                                
-                                // Cập nhật màu cho textarea trong ô ghi chú
-                                const textarea = cell.querySelector('textarea');
-                                if (textarea) {
-                                    textarea.style.background = colorScheme.background;
-                                    textarea.style.color = colorScheme.textColor;
-                                    textarea.style.border = `1px solid ${colorScheme.borderColor}`;
-                                }
-                            });
-                        }
-                    });
-                }
-            }
-            
-            // Đảm bảo tất cả ô nội dung luôn có màu trắng
-            const contentCells = document.querySelectorAll('.schedule-cell, .note-cell');
-            contentCells.forEach(cell => {
-                if (!cell.style.background || cell.style.background === '') {
-                    cell.style.background = 'white';
-                }
-            });
-        }
-
-        // Thêm CSS animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeIn {
-                from { opacity: 0; transform: translateY(-10px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-            
-            .schedule-cell {
-                transition: all 0.3s ease;
-            }
-            
-            .schedule-cell:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            }
-            
-            .color-option div {
-                transition: all 0.2s ease;
-            }
-        `;
-        document.head.appendChild(style);
-
-        // Khởi tạo ứng dụng
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeSchedule();
-            setupAutoSave();
-            
-            // Thêm event listener để thoát chế độ chọn màu khi nhấn ESC
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && colorMode) {
-                    selectedColor = null;
-                    colorMode = false;
-                    document.body.style.cursor = 'default';
-                    document.getElementById('selectedColorInfo').textContent = 'Chưa chọn màu nào';
-                    document.querySelectorAll('.color-option div').forEach(div => {
-                        div.style.transform = 'scale(1)';
-                        div.style.boxShadow = 'none';
-                    });
-                    showNotification('Đã thoát chế độ chọn màu');
-                }
-            });
-        });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'990cd21145b19626',t:'MTc2MDg0MDY4MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'990ce7c4969d9626',t:'MTc2MDg0MTU3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
+
 
